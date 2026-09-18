@@ -22,7 +22,7 @@ export async function POST(request: Request) {
         volume: data.volume,
         issueNumber: data.issueNumber,
         publishedAt: new Date(),
-        isPublished: true,
+        isPublished: false,
       }
     });
     return NextResponse.json({ issue });

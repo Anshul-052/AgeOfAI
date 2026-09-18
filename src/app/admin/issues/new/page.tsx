@@ -32,7 +32,8 @@ export default function NewIssuePage() {
 
   return (
     <main className="max-w-screen-md mx-auto px-edge-margin py-stack-lg min-h-screen">
-      <h1 className="font-headline-xl text-headline-xl uppercase mb-8">New Issue</h1>
+      <h1 className="font-headline-xl text-headline-xl uppercase mb-2">New Draft Issue</h1>
+      <p className="mb-8 text-sm text-on-surface-variant">This issue stays private until you review it and use the publish button on the admin dashboard.</p>
       
       {error && <div className="bg-error-container text-on-error-container p-4 mb-4">{error}</div>}
 
@@ -48,7 +49,7 @@ export default function NewIssuePage() {
         
         <div className="pt-6">
           <button type="submit" disabled={isSaving} className="w-full bg-primary text-on-primary font-headline-md py-3 hover:opacity-90 disabled:opacity-50">
-            {isSaving ? "Saving..." : "Create Issue"}
+            {isSaving ? "Saving..." : "Create Draft Issue"}
           </button>
         </div>
       </form>

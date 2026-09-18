@@ -71,7 +71,7 @@ export function generateNewsletterHtml(issue: IssueData, subscriberEmail: string
           <tr>
             <td style="padding: 16px 30px; background-color: #f1f5f9; border-bottom: 1px solid #cbd5e1; text-align: center;">
               <p style="font-family: sans-serif; font-size: 13px; color: #334155; margin: 0;">
-                📖 View the interactive page-flip issue on the web: 
+                View the interactive page-flip issue on the web:
                 <a href="${issueUrl}" style="color: #2563eb; font-weight: bold; text-decoration: underline;">Open Broadsheet Reader →</a>
               </p>
             </td>

@@ -7,11 +7,13 @@
 1. Scans recent feeds and, when enabled, search results for every domain in `src/lib/domains.json`.
 2. Removes promotional posts and near-duplicate headlines, then ranks candidates by freshness and source quality.
 3. Searches feeds and Google News RSS for independent corroboration. When Tavily is configured, it adds deeper current-web verification. A story always needs at least two different publisher domains.
-4. Gives the drafting model numbered evidence only. The model must return a three-part Crux, tags, severity, uncertainties, and a claim-to-source ledger.
+4. Gives the drafting model numbered evidence only. The model must return a detailed 600–1,000 word report, tags, severity, uncertainties, and a claim-to-source ledger.
 5. Validates the structure and every citation before accepting the draft.
-6. Publishes all accepted stories and the new issue in one database transaction. If coverage falls below `EDITOR_MIN_STORIES`, nothing is published.
+6. Saves all accepted stories in one private draft issue. If coverage falls below `EDITOR_MIN_STORIES`, no issue is created.
 7. Saves the evidence trail on every story so readers can inspect sources and limitations.
-8. Uses a unique Sunday edition key so a scheduler retry cannot publish the same week twice.
+8. Uses a unique Sunday edition key so a scheduler retry cannot create the same week twice.
+9. Requires the administrator to review the draft and press the final publish button before readers can see it.
+10. Uses images supplied by the original publisher page or feed. If a source image cannot be verified, the story is shown without an image.
 
 Source checking reduces errors but cannot prove that every source is correct. The public story page describes the process as “AI source-checked,” not “factually guaranteed.”
 
@@ -32,7 +34,7 @@ EDITOR_SEARCH_DISCOVERY="true"
 
 The model name is intentionally configuration, because provider model availability changes. Without Tavily, the editor uses specialist feeds plus Google News RSS and still enforces the independent-domain threshold. Tavily adds current discovery, relevance scores, date and domain filters, and stronger parsed source content when available.
 
-The autonomous editor runs as a server-side script and does not need the legacy admin UI. Leave `ADMIN_ACCESS_KEY` unset in production to make admin pages and mutation endpoints return `404`. For temporary access, set a long random value and use it as either a Bearer token or the password in the browser's Basic Auth prompt.
+The editor runs as a server-side script, while final publication is limited to the protected admin UI. Set `ADMIN_ACCESS_KEY` to a long random value and use it as either a Bearer token or the password in the browser's Basic Auth prompt. Without this value, admin pages and mutation endpoints return `404`.
 
 ## Run it
 
@@ -48,17 +50,17 @@ Preview coverage without changing the database:
 npm run editor:preview
 ```
 
-Build and publish an edition:
+Build a private draft edition:
 
 ```powershell
 npm run editor:edition
 ```
 
-Without Gemini, scan mode still reports coverage gaps. Publication refuses to proceed without Gemini or when too few stories pass verification. A successful run prints one JSON report with coverage per domain, model usage, and every withheld reason; retain that output in the scheduler logs.
+Without Gemini, scan mode still reports coverage gaps. Draft creation refuses to proceed without Gemini or when too few stories pass verification. A successful run prints one JSON report with coverage per domain, model usage, and every withheld reason; retain that output in the scheduler logs. Review the private issue at `/admin`, then use **Review complete — publish issue** for the final release.
 
 ## Scheduling
 
-Run `editor:edition` once each Sunday after configuring a persistent production database. The scheduler must stop on a non-zero exit code and alert on failures. Do not schedule this against an ephemeral deployment filesystem or a local SQLite file that the public site cannot read.
+Run `editor:edition` once each Sunday after configuring a persistent production database. It prepares a private draft and never makes it public. The scheduler must stop on a non-zero exit code and alert on failures. Do not schedule this against an ephemeral deployment filesystem or a local SQLite file that the public site cannot read.
 
 `.github/workflows/weekly-edition.yml` is ready for GitHub Actions. It runs Sundays at 09:00 Asia/Kolkata, prevents overlapping editions, supports manual runs, fails when required secrets are absent, and retains the editor report for 30 days. Add `DATABASE_URL` and `GEMINI_API_KEY` as repository secrets; `TAVILY_API_KEY` can be added later without changing the workflow.
 

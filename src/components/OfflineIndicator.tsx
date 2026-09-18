@@ -35,7 +35,7 @@ export default function OfflineIndicator() {
   return (
     <div className="bg-amber-600 text-white text-xs font-mono text-center py-2 px-4 border-b border-amber-700 flex items-center justify-center gap-2">
       <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
-      📡 <strong>OFFLINE MODE:</strong> You are currently offline. Viewing cached broadsheet issue.
+      <strong>OFFLINE MODE:</strong> You are currently offline. Viewing the cached broadsheet issue.
     </div>
   );
 }

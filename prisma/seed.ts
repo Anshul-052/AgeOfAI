@@ -1,7 +1,7 @@
 import { prisma } from '../src/lib/db';
 
 async function main() {
-  console.log('📰 Seeding AgeOfAI Volume 1, Issue 1 (First Edition)...');
+  console.log('Seeding AgeOfAI Volume 1, Issue 1 (First Edition)...');
 
   await prisma.story.deleteMany({});
   await prisma.issue.deleteMany({});
@@ -51,8 +51,6 @@ async function main() {
       publishedAt: now,
       isPublished: true,
       layout: 'editorial-and-drama-split',
-      coverImageUrl: 'https://image.pollinations.ai/prompt/Vintage%20broadsheet%20newspaper%20woodcut%20illustration%20of%20artificial%20intelligence%20brain%20circuits%20and%20robotic%20gears%20monochrome?width=800&height=450&nologo=true&seed=1001',
-      coverImagePrompt: 'Volume 1 Issue 1 Broadsheet Header: The Dawn of Reasoning Models & Agentic Systems'
     }
   });
 
@@ -61,7 +59,6 @@ async function main() {
       title: 'DeepSeek-R1 & OpenAI o3: The Shift from Pattern Matching to Test-Time Compute Reasoning',
       crux: 'The AI landscape has reached a monumental pivot point. Rather than relying solely on pre-training scaling laws, frontier architectures like DeepSeek-R1 and OpenAI o3 allocate test-time compute to generate verified chains-of-thought (CoT) before outputting final answers. For CS students, this marks a shift from LLMs as next-token predictors to deliberate algorithmic search engines executing reinforcement learning (RL) verification over complex multi-step reasoning trees.',
       sourceUrl: 'https://arxiv.org/abs/2501.12948',
-      imageUrl: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1000&q=80',
       domain: 'LLMs',
       severity: 'major',
       publishedAt: now,
@@ -83,7 +80,6 @@ async function main() {
       title: 'DARPA AI Cyber Challenge: Autonomous Vulnerability Discovery Engines Outperform Human Auditors',
       crux: 'Cybersecurity research has entered an autonomous arms race. Autonomous Cyber Reasoning Systems (CRS) utilizing fine-tuned LLMs and fuzzing engines successfully identified 0-day memory corruption vulnerabilities across critical Linux kernel sub-modules within minutes. Security researchers emphasize that verifying LLM-generated exploit chains requires strict formal verification sandbox boundaries.',
       sourceUrl: 'https://github.com/trending',
-      imageUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1000&q=80',
       domain: 'Cybersecurity',
       severity: 'major',
       publishedAt: now,
@@ -94,7 +90,6 @@ async function main() {
       title: 'FlashAttention-3 & RingAttention: Pushing Context Windows Beyond 1 Million Tokens Without SRAM Bottlenecks',
       crux: 'Standard attention mechanisms scale quadratically in memory O(N²), causing severe SRAM memory bandwidth bottlenecks on modern GPU clusters. FlashAttention-3 leverages asynchronous GPU tensor core operations and warp-specialized scheduling to compute exact softmax attention in block-wise tiles. Combined with RingAttention across distributed nodes, systems can now ingest entire codebases into active context.',
       sourceUrl: 'https://arxiv.org/abs/2407.08608',
-      imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1000&q=80',
       domain: 'Research',
       severity: 'major',
       publishedAt: now,
@@ -105,7 +100,6 @@ async function main() {
       title: 'The Rise of Agentic Pair Programming: Cursor, Devin & Autonomous Repo Refactoring Engines',
       crux: 'Software engineering workflows are transitioning from static autocompletion to autonomous repository agents. Modern AI coding assistants construct multi-file dependency graphs, execute background unit test suites, and iteratively fix syntax and logic bugs before opening pull requests. Engineers are focusing more on architectural design and system invariants rather than boilerplate syntax.',
       sourceUrl: 'https://github.com',
-      imageUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1000&q=80',
       domain: 'Startups & Funding',
       severity: 'notable',
       publishedAt: now,
@@ -128,7 +122,6 @@ async function main() {
       title: 'React 19 & Next.js 15: Server Components, Actions, and the Future of Full-Stack React',
       crux: 'React 19 introduces the use() hook for reading resources during render, Server Actions for mutations, and improved hydration. Next.js 15 aligns with React 19, adding Turbopack by default, async request APIs, and instrumentation hooks. The combined release redefines how full-stack React applications handle data fetching, caching, and server-client boundaries.',
       sourceUrl: 'https://react.dev/blog/2024/12/05/react-19',
-      imageUrl: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?auto=format&fit=crop&w=1000&q=80',
       domain: 'Web Development',
       severity: 'major',
       publishedAt: now,
@@ -151,7 +144,6 @@ async function main() {
       title: 'Unreal Engine 5.5: Nanite Tessellation, MegaLights, and the Path to Photorealism',
       crux: 'Unreal Engine 5.5 introduces Nanite tessellation for displacement mapping without manual LODs, MegaLights for millions of dynamic area lights, and a rewritten animation layering system. Combined with Lumen global illumination, the engine pushes real-time rendering closer to offline path-tracing quality while maintaining 60 FPS on current-gen consoles.',
       sourceUrl: 'https://www.unrealengine.com/en-US/blog',
-      imageUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1000&q=80',
       domain: 'Gaming',
       severity: 'major',
       publishedAt: now,
@@ -174,7 +166,6 @@ async function main() {
       title: 'Ethereum Pectra Upgrade: Account Abstraction, Verkle Trees, and Validator Experience',
       crux: 'The Pectra upgrade (Prague + Electra) brings EIP-7702 (native account abstraction), Verkle tree migration for stateless clients, and EIP-7251 (max effective balance increase to 2,048 ETH). These changes reduce validator hardware requirements, enable smart contract wallets at the protocol layer, and lay groundwork for stateless verification.',
       sourceUrl: 'https://ethereum.org/en/roadmap/',
-      imageUrl: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=1000&q=80',
       domain: 'Crypto & Web3',
       severity: 'major',
       publishedAt: now,
@@ -197,7 +188,6 @@ async function main() {
       title: 'iOS 18 & Swift 6: Apple Intelligence, Data Race Safety, and the Swift Testing Framework',
       crux: 'iOS 18 debuts Apple Intelligence with on-device foundation models, Private Cloud Compute for larger models, and App Intents for Siri integration. Swift 6 enforces compile-time data race safety via strict concurrency checking. The new Swift Testing framework replaces XCTest with expressive macros, parallel execution, and parameterized tests.',
       sourceUrl: 'https://developer.apple.com/documentation',
-      imageUrl: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=1000&q=80',
       domain: 'Mobile',
       severity: 'major',
       publishedAt: now,
@@ -220,7 +210,6 @@ async function main() {
       title: 'NVIDIA Blackwell GB200: 208B Transistors, NVLink 5.0, and the AI Superchip Era',
       crux: 'The Blackwell GB200 NVL72 combines two GB200 GPUs with a Grace CPU via 900 GB/s NVLink-C2C, delivering 20 petaFLOPS FP4 per rack. NVLink 5.0 scales to 576 GPUs in a single domain. TSMC 4NP process and CoWoS-L packaging enable the largest compute density ever shipped — targeting trillion-parameter model training and inference.',
       sourceUrl: 'https://www.nvidia.com/en-us/data-center/blackwell-platform/',
-      imageUrl: 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&w=1000&q=80',
       domain: 'Hardware',
       severity: 'major',
       publishedAt: now,
@@ -243,7 +232,6 @@ async function main() {
       title: 'How to Build Your First RAG Pipeline: A Step-by-Step Guide for CS Students',
       crux: 'Retrieval-Augmented Generation (RAG) is the foundational pattern for grounding LLMs in private data. This tutorial walks through chunking strategies, embedding model selection (BGE-M3 vs. Nomic), vector database choices (Qdrant, pgvector, Milvus), and evaluation metrics (hit rate, MRR) — all runnable on a laptop with Ollama and LangChain.',
       sourceUrl: 'https://github.com/langchain-ai/langchain',
-      imageUrl: 'https://images.unsplash.com/photo-1501504905252-473c47e087f8?auto=format&fit=crop&w=1000&q=80',
       domain: 'Campus',
       severity: 'major',
       publishedAt: now,

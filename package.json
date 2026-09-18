@@ -15,9 +15,11 @@
     "postinstall": "prisma generate --schema prisma/schema.prisma && prisma generate --schema prisma/schema.test.prisma",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma && prisma generate --schema prisma/schema.test.prisma",
     "db:migrate-content": "tsx scripts/migrate-sqlite-to-supabase.ts",
+    "images:backfill": "tsx scripts/backfill-original-images.ts",
     "editor:scan": "tsx scripts/ai-editor.ts --scan-only",
     "editor:preview": "tsx scripts/ai-editor.ts --preview",
-    "editor:edition": "tsx scripts/ai-editor.ts --publish"
+    "editor:stage": "tsx scripts/ai-editor.ts --stage",
+    "editor:edition": "tsx scripts/ai-editor.ts --stage"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

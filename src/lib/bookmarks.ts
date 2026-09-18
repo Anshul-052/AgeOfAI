@@ -49,7 +49,7 @@ export function toggleBookmark(story: Story): boolean {
 
 export function generateStudyGuideMarkdown(bookmarks: Story[]): string {
   const dateStr = new Date().toLocaleDateString('en-US', { dateStyle: 'full' });
-  let md = `# 🎓 AgeOfAI — Computer Science Study Guide\n`;
+  let md = `# AgeOfAI — Computer Science Study Guide\n`;
   md += `*Generated on ${dateStr}*\n\n`;
   md += `---\n\n`;
 

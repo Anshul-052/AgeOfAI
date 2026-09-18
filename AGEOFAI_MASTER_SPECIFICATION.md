@@ -31,7 +31,7 @@ Rather than delivering ephemeral social media snippets or generalist daily email
 | • Electric Humanoid Robots|  • Hardware, Web, Crypto| • Benchmark Wars      |
 | • Test-Time Compute Wars  |  • Tools & Research     | • Model Weight Leaks  |
 +-----------------------------------------------------------------------------+
-| Interactive Flipbook • 14 Domains • 9 Ingest Sources • "Ask the Engineer"  |
+| Interactive Flipbook • 27 Domains • Multi-source verified reporting       |
 +-----------------------------------------------------------------------------+
 ```
 
@@ -97,7 +97,6 @@ The editorial scope expanded from 6 AI domains to **14 comprehensive technology 
 3. **Deeper Look**: An analytical focus card examining algorithmic trade-offs, benchmarks, or interview questions.
 
 Additional capabilities integrated during this phase:
-* **"Ask the Engineer" AI Tutor**: Interactive drawer on every story card allowing students to ask technical questions and receive structured explanations with code snippets.
 * **Newsletter Dispatch Engine**: Converts weekly issues into responsive, table-based HTML emails distributed via the **Resend API**.
 * **Student Study Bookmarks**: Client-side collection saving stories with one-click export to Markdown (`.md`) and printable broadsheet PDF.
 * **Progressive Web App (PWA) & Offline Reading**: Service worker (`sw.js`) caching assets and articles for offline access with an active network indicator.
@@ -153,7 +152,6 @@ While general tech media chases speculative market valuations and sensational cl
   * "More Stories Like This" recommendation clusters on every article.
 
 #### 4. Automated Placement Mock Interview Generator
-* Integration with the "Ask the Engineer" drawer to provide an interactive "Quiz Me on This Story" mode.
 * Generates 3 interview-style challenges per story:
   1. *Conceptual*: Explain the mathematical or architectural trade-off.
   2. *Code / Pseudocode*: Write a representative implementation (e.g., implement a toy KV-cache in Python).
@@ -197,7 +195,7 @@ While general tech media chases speculative market valuations and sensational cl
 | **Database ORM** | Prisma ORM | 7.8.0 | Type-safe query building, migration management, and multi-database schema synchronization. |
 | **Database Engines**| SQLite / PostgreSQL | Dynamic | Dual-engine support: SQLite (`dev.db`) for zero-config instant local dev; PostgreSQL (Neon/Supabase) for production full-text search. |
 | **Driver Adapters** | `@prisma/adapter-better-sqlite3`<br>`@prisma/adapter-pg` | Latest | Runtime driver switching in `src/lib/db.ts` allowing single-codebase execution across local and cloud databases. |
-| **Primary AI Model**| Google Gemini 1.5 Flash | REST v1beta | High-speed, cost-effective story drafting, crux summarization, structured JSON tag extraction, and AI tutoring. |
+| **Primary AI Model**| Google Gemini Flash | REST v1beta | Source-grounded long-form story drafting and structured editorial metadata. |
 | **Secondary AI** | Anthropic Claude SDK | 0.110.0 | High-reasoning editorial draft fallback for complex paper analysis. |
 | **Email Dispatch** | Resend API | REST v1 | Transactional and newsletter email delivery using custom table-based responsive HTML broadsheet templates. |
 | **Social Cards** | `@vercel/og` | Next.js Native | Dynamic SVG/PNG OpenGraph card generation for social sharing on Twitter/X, LinkedIn, and WhatsApp. |
@@ -266,7 +264,7 @@ While general tech media chases speculative market valuations and sensational cl
 |      DIGITAL BROADSHEET UI      |       |    RESEND NEWSLETTER DISPATCH   |
 | • FlipBook.tsx (Page-Turn)      |       | • Table-based HTML broadsheet   |
 | • 14 Reflowed Domain Pages      |       | • Automated subscriber dispatch |
-| • "Ask the Engineer" AI Tutor   |       | • Unsubscribe compliance        |
+| • Permanent searchable archive  |       | • Unsubscribe compliance        |
 | • Study Bookmarks & PDF Export  |       +---------------------------------+
 +---------------------------------+
 ```
@@ -392,7 +390,7 @@ model TokenUsage {
   promptTokens     Int
   candidateTokens  Int
   totalTokens      Int
-  action           String   @default("ai-draft") // ai-draft, explain, image-gen
+  action           String   @default("ai-draft")
   domain           String?  // Associated domain
   isCacheHit       Boolean  @default(false)
   createdAt        DateTime @default(now())
@@ -546,7 +544,6 @@ ageofai/
 │   │       ├── issues/route.ts    # CRUD endpoint for issues
 │   │       ├── search/route.ts    # Dual PostgreSQL tsvector / SQLite fallback search
 │   │       ├── ai-draft/route.ts  # Gemini drafting endpoint with SHA-256 cache check
-│   │       ├── ai-explain/route.ts# "Ask the Engineer" interactive AI tutor route
 │   │       ├── og/route.tsx       # Dynamic OpenGraph broadsheet card generator (@vercel/og)
 │   │       ├── subscribe/route.ts # Newsletter subscription handler
 │   │       └── admin/
@@ -555,7 +552,6 @@ ageofai/
 │   ├── components/
 │   │   ├── FlipBook.tsx           # react-pageflip wrapper with cover-open animation
 │   │   ├── StoryCard.tsx          # Reusable broadsheet article card with video & explain modal
-│   │   ├── ExplainModal.tsx       # "Ask the Engineer" interactive concept drawer
 │   │   ├── BroadsheetPageScroll.tsx # Event-isolated scroll wrapper preventing flipbook lock
 │   │   ├── DramaSection.tsx       # Distinct amber-tinted back-page controversy layout
 │   │   ├── Navbar.tsx             # Masthead, volume metadata, domain links, search bar
@@ -571,7 +567,6 @@ ageofai/
 │   │   ├── broadsheetPages.tsx    # Dynamic generator converting stories into 14 domain pages
 │   │   ├── newsletter.ts          # Table-based responsive HTML email generator
 │   │   ├── bookmarks.ts           # LocalStorage client manager and Markdown exporter
-│   │   ├── image-gen.ts           # Woodcut broadsheet cover art generator
 │   │   └── claude.ts              # Anthropic Claude SDK fallback client
 │   └── types/
 │       └── index.ts               # Core TypeScript interfaces
@@ -614,7 +609,7 @@ DATABASE_URL="file:./dev.db"
 # ==========================================================
 # 2. AI & LLM PROVIDER
 # ==========================================================
-# Google Gemini API Key (Required for AI Drafting & "Ask the Engineer")
+# Google Gemini API Key (Required for AI drafting)
 # Get a free key at https://aistudio.google.com
 GEMINI_API_KEY="AIzaSyYourActualKeyHere"
 

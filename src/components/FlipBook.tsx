@@ -138,7 +138,7 @@ export default function FlipBook({ children, layout = "lead-story-focus" }: Flip
           className="bg-primary text-on-primary font-label-caps text-xs uppercase px-3.5 py-1.5 rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-lg font-bold"
           title={isFullscreen ? "Exit Fullscreen (Esc)" : "Enter Fullscreen Reader Mode"}
         >
-          {isFullscreen ? "✕ Exit Fullscreen" : "⛶ Fullscreen"}
+          {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
         </button>
       </div>
 
@@ -167,7 +167,7 @@ export default function FlipBook({ children, layout = "lead-story-focus" }: Flip
             {/* Click to Open Floating Action Callout */}
             <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors z-20 flex items-center justify-center p-4">
               <span className="bg-primary text-on-primary font-headline-md text-sm md:text-base uppercase px-6 py-3 rounded-full shadow-2xl border-2 border-on-primary font-black tracking-wider flex items-center gap-2 group-hover:scale-105 transition-transform">
-                📖 Click to Open Broadsheet Issue →
+                Open Broadsheet Issue
               </span>
             </div>
           </div>

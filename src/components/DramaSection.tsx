@@ -10,7 +10,7 @@ export default function DramaSection({ stories }: DramaSectionProps) {
   return (
     <section className="bg-neutral-950 text-neutral-100 p-4 sm:p-6 border-4 border-amber-500 rounded-none relative shadow-2xl my-4 font-serif">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-amber-500 text-neutral-950 font-mono text-xs uppercase px-4 py-1 border border-neutral-950 font-black tracking-widest">
-        ⚠️ THE BACK PAGE: AI DRAMA & CONTROVERSY
+        THE BACK PAGE: AI DRAMA AND CONTROVERSY
       </div>
       
       <div className="text-center border-b border-amber-500/40 pb-3 mb-4 mt-2">

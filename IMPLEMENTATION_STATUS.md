@@ -6,7 +6,7 @@ Updated: 2026-09-18. Product source of truth: `AGEOFAI_MASTER_SPECIFICATION.md`.
 
 AgeOfAI is a weekly, evidence-checked technology magazine covering 27 fields. Readers get a fast front page, permanent issue and topic archives, full-text search, story pages with source evidence, and local bookmarks. The default experience is a responsive reading stream; the broadsheet page-turn view remains available on wide screens and is disabled on mobile and for reduced-motion users.
 
-The publication workflow is autonomous and evidence-gated. A weekly editor discovers recent stories from configured feeds and search, rejects stale, promotional, irrelevant, and duplicate items, requires independent corroboration, drafts only from the gathered evidence, validates every draft, and publishes an issue atomically. It refuses to publish an edition that does not meet the configured quality threshold.
+The publication workflow is evidence-gated and ends with an administrator decision. A weekly editor discovers recent stories from configured feeds and search, rejects stale, promotional, irrelevant, and duplicate items, requires independent corroboration, drafts only from the gathered evidence, validates every draft, and stages a private issue atomically. It refuses to create an edition that does not meet the configured quality threshold. Only the protected admin publish button can make an issue public.
 
 ## Implemented
 
@@ -18,16 +18,18 @@ The publication workflow is autonomous and evidence-gated. A weekly editor disco
 - The homepage highlights a concise set of strong stories instead of rendering the whole database as one feed.
 - Issue, story, topic, search, bookmark, and issue-archive pages have been rebuilt around permanent discovery and reading.
 - Search supports query, domain, time-period, sort, and pagination controls.
-- Source-checked stories expose their evidence on the story page. Bookmarks stay synchronized between visible cards.
+- Source-checked stories expose their evidence on the story page. New reports target 600–1,000 words, while archive cards show concise previews. Bookmarks stay synchronized between visible cards.
+- Stories use original publisher images discovered from feeds or source-page metadata. Unverified AI and stock-image URLs are rejected.
 - The responsive broadsheet layout has mobile touch targets, a sticky section picker, desktop domain navigation, reduced-motion behavior, and no document-level horizontal overflow at the tested widths.
 - Newsletter issue links now use the issue identifier, and generated email content is escaped with validated URLs.
 - Legacy admin pages, admin APIs, AI drafting, and story/issue mutations are disabled by default. Setting `ADMIN_ACCESS_KEY` enables Basic or Bearer authentication for temporary access.
 - The Supabase PostgreSQL schema and newsletter-safety migrations are live. They add unique ingestion/story constraints, status checks, a full-text GIN index, RLS on every application table, revoked Data API grants, restrictive default privileges, and idempotent newsletter delivery records.
 - `scripts/migrate-sqlite-to-supabase.ts` transactionally copied the existing publication into Supabase without deleting target data and remains available for repeatable previews.
 - Newsletter unsubscribe links use HMAC signatures, dispatches require complete configuration, and per-subscriber delivery records plus Resend idempotency keys prevent duplicate sends on retries.
-- Inbox approval is transactional, requires a selected published issue, validates fields, prevents duplicate publication, and invalidates affected pages.
+- Inbox approval is transactional, accepts a selected draft or published issue, validates fields, prevents duplicate publication, and invalidates affected pages.
+- Draft issues remain invisible on all public pages until the protected admin confirmation publishes them in one transaction.
 - Offline caching excludes private/admin/API traffic, RSC payloads, and third-party requests.
-- A GitHub Actions workflow is ready to publish every Sunday at 09:00 Asia/Kolkata, prevent overlapping runs, support manual runs, and retain editorial reports for 30 days.
+- A GitHub Actions workflow is ready to prepare a private draft every Sunday at 09:00 Asia/Kolkata, prevent overlapping runs, support manual runs, and retain editorial reports for 30 days.
 
 See `AI_EDITOR.md` for activation, environment variables, output guarantees, and scheduling.
 
@@ -52,13 +54,12 @@ See `AI_EDITOR.md` for activation, environment variables, output guarantees, and
 2. Connect the project to GitHub and add `DATABASE_URL` plus `GEMINI_API_KEY` repository secrets to activate the checked-in Sunday editor workflow.
 3. Configure `RESEND_API_KEY`, `NEWSLETTER_FROM`, and a 32+ character `NEWSLETTER_UNSUBSCRIBE_SECRET`, then send one private test delivery before accepting public subscribers.
 4. Add Tavily when available for deeper discovery and parsed evidence. The editor already operates with specialist feeds and Google News RSS.
-5. Keep `ADMIN_ACCESS_KEY` unset in an autonomous deployment. If emergency admin access is required, set a long random value and rotate it after use.
+5. Set a long random `ADMIN_ACCESS_KEY` in Vercel. This is required to open `/admin` and perform the final publication approval.
 6. Add deployment backups, uptime/error monitoring, CI, and final cross-device accessibility checks. Establish project-scoped version control before connecting a deployment provider; Git currently resolves above this project, so unrelated parent files must not be staged.
 
 ## Later roadmap
 
 - Placement syllabus categories and a weekly five-question cheat sheet.
-- Three-part story quizzes integrated with Ask the Engineer.
 - Living-story relationships with chronological timelines.
 - PostgreSQL hybrid semantic search and related stories.
 - Opt-in domain notifications with weekly scarcity limits.

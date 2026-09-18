@@ -103,7 +103,7 @@ export default function NewStoryPage() {
 
           {tokenUsageNotice && (
             <div className="font-mono text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded">
-              ⚡ Usage: <strong>{tokenUsageNotice.totalTokens}</strong> tokens (Prompt: {tokenUsageNotice.promptTokens}, Output: {tokenUsageNotice.candidateTokens})
+              Usage: <strong>{tokenUsageNotice.totalTokens}</strong> tokens (Prompt: {tokenUsageNotice.promptTokens}, Output: {tokenUsageNotice.candidateTokens})
             </div>
           )}
         </div>

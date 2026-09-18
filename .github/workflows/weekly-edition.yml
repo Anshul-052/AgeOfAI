@@ -1,4 +1,4 @@
-name: Publish weekly AgeOfAI edition
+name: Prepare weekly AgeOfAI edition for review
 
 on:
   schedule:
@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 jobs:
-  publish:
+  prepare:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -48,11 +48,11 @@ jobs:
           test -n "$DATABASE_URL" || { echo "DATABASE_URL secret is missing"; exit 1; }
           test -n "$GEMINI_API_KEY" || { echo "GEMINI_API_KEY secret is missing"; exit 1; }
 
-      - name: Build and publish the verified edition
+      - name: Build the verified draft edition
         shell: bash
         run: |
           set -o pipefail
-          npm run editor:edition | tee editor-report.json
+          npm run editor:stage | tee editor-report.json
 
       - name: Retain the editorial report
         if: always()

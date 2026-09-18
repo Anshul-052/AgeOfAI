@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import type { PrismaClient } from '@prisma/client';
 import { PrismaClient as TestPrismaClient } from '../generated/prisma-test';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
-import { approveCandidate, EditorialError } from '../src/lib/editorial';
+import { approveCandidate, EditorialError, publishIssue } from '../src/lib/editorial';
 
 test('publication attaches to the chosen issue, rejects repeats, and preserves failed candidates', async () => {
   const db = new TestPrismaClient({ adapter: new PrismaBetterSqlite3({ url: ':memory:' }) });
@@ -34,5 +34,21 @@ test('publication attaches to the chosen issue, rejects repeats, and preserves f
     await db.$executeRawUnsafe(`CREATE TRIGGER reject_story BEFORE INSERT ON Story BEGIN SELECT RAISE(ABORT, 'simulated write failure'); END`);
     await assert.rejects(approveCandidate(editorialDb, input));
     assert.equal((await db.ingestedCandidate.findUniqueOrThrow({ where: { id: candidate.id } })).status, 'drafted');
+  } finally { await db.$disconnect(); }
+});
+
+test('an issue remains private until an admin publication action succeeds', async () => {
+  const db = new TestPrismaClient({ adapter: new PrismaBetterSqlite3({ url: ':memory:' }) });
+  try {
+    const sql = readFileSync('prisma/test-schema.sql', 'utf8');
+    for (const statement of sql.split(';').map(s => s.trim()).filter(Boolean)) await db.$executeRawUnsafe(statement);
+    const draft = await db.issue.create({ data: { volume: 'Test', issueNumber: 2, publishedAt: new Date(), isPublished: false } });
+    const editorialDb = db as unknown as PrismaClient;
+    await assert.rejects(publishIssue(editorialDb, draft.id), (e: unknown) => e instanceof EditorialError && e.status === 400);
+    assert.equal((await db.issue.findUniqueOrThrow({ where: { id: draft.id } })).isPublished, false);
+    await db.story.create({ data: { title: 'Reviewed report', crux: 'Detailed report.', sourceUrl: 'https://example.com/report', domain: 'Research', issueId: draft.id, publishedAt: new Date() } });
+    const published = await publishIssue(editorialDb, draft.id);
+    assert.equal(published.isPublished, true);
+    await assert.rejects(publishIssue(editorialDb, draft.id), (e: unknown) => e instanceof EditorialError && e.status === 409);
   } finally { await db.$disconnect(); }
 });

@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { XMLParser } from 'fast-xml-parser';
 import { prisma } from '../src/lib/db';
 import domains from '../src/lib/domains.json';
+import { findOriginalImage, safeImageUrl } from '../src/lib/sourceImages';
 
 type Candidate = {
   domain: string;
@@ -12,6 +13,7 @@ type Candidate = {
   publisher: string;
   publishedAt: Date;
   score: number;
+  imageUrl?: string;
 };
 
 type Source = Candidate & { id: string; content: string };
@@ -25,9 +27,9 @@ type Draft = {
 };
 
 const argv = new Set(process.argv.slice(2));
-const shouldPublish = argv.has('--publish');
+const shouldStage = argv.has('--stage') || argv.has('--publish');
 const scanOnly = argv.has('--scan-only');
-const previewOnly = argv.has('--preview') || !shouldPublish;
+const previewOnly = argv.has('--preview') || !shouldStage;
 const maxPerDomain = Math.max(1, Number(process.env.EDITOR_MAX_PER_DOMAIN || 2));
 const days = Math.max(1, Number(process.env.EDITOR_LOOKBACK_DAYS || 8));
 const model = process.env.GEMINI_MODEL || '';
@@ -43,13 +45,13 @@ const runId = crypto.randomUUID();
 const xml = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_', processEntities: true, trimValues: true });
 const report = {
   runId,
-  mode: scanOnly ? 'scan' : previewOnly ? 'preview' : 'publish',
+  mode: scanOnly ? 'scan' : previewOnly ? 'preview' : 'stage',
   startedAt: new Date().toISOString(),
   verification: tavilyKey ? 'tavily-and-independent-feeds' : 'independent-feeds-and-google-news',
   fetched: 0,
   considered: 0,
   drafted: 0,
-  published: 0,
+  staged: 0,
   models: {} as Record<string, number>,
   coverage: {} as Record<string, { fetched: number; selected: number; withheld: number }>,
   withheld: [] as { domain: string; title?: string; reason: string }[],
@@ -82,6 +84,23 @@ function safeUrl(value: unknown): string {
     const url = new URL(text(value));
     return /^https?:$/.test(url.protocol) ? url.toString() : '';
   } catch { return ''; }
+}
+
+function feedImage(item: Record<string, unknown>): string {
+  const values = [item['media:content'], item['media:thumbnail'], item.enclosure, item.image];
+  for (const value of values) {
+    for (const entry of list(value as Record<string, unknown> | string | undefined)) {
+      if (typeof entry === 'string') {
+        const url = safeImageUrl(entry);
+        if (url) return url;
+      } else if (entry && typeof entry === 'object') {
+        const image = entry as Record<string, unknown>;
+        const url = safeImageUrl(image['@_url'] ?? image.url ?? image['#text']);
+        if (url) return url;
+      }
+    }
+  }
+  return '';
 }
 
 function host(url: string): string {
@@ -153,7 +172,7 @@ function parseFeed(body: string, domain: string): Candidate[] {
     const publisher = sourceUrl ? host(sourceUrl) : clean(source) || host(url);
     const age = (Date.now() - publishedAt.getTime()) / 86_400_000;
     const score = Math.max(0, 6 - age / 2) + Math.min(3, summary.length / 400) + (url.startsWith('https://') ? 1 : 0) + sourceQuality(publisher);
-    return { domain, title, summary, url, publisher, publishedAt, score };
+    return { domain, title, summary, url, publisher, publishedAt, score, imageUrl: feedImage(item) || undefined };
   }).filter(item => item.title.length >= 12 && item.summary.length >= 30 && item.url && !Number.isNaN(item.publishedAt.getTime()) && item.publishedAt >= new Date(Date.now() - days * 86_400_000)).filter(relevant);
 }
 
@@ -243,7 +262,7 @@ async function callGemini(prompt: string): Promise<{ value: unknown; modelUsed: 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(geminiKey)}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 4096, responseMimeType: 'application/json' } }),
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 8192, responseMimeType: 'application/json' } }),
       });
       if (response.ok) {
         const payload = await response.json() as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
@@ -263,7 +282,8 @@ function validateDraft(value: unknown, sources: Source[]): Draft {
   if (!value || typeof value !== 'object') throw new Error('The drafting model returned an invalid object.');
   const draft = value as Draft;
   if (typeof draft.title !== 'string' || draft.title.length < 10 || draft.title.length > 180) throw new Error('Invalid drafted title.');
-  if (typeof draft.crux !== 'string' || draft.crux.length < 280 || draft.crux.length > 2400) throw new Error('Draft does not meet the Crux standard.');
+  const wordCount = typeof draft.crux === 'string' ? draft.crux.trim().split(/\s+/).length : 0;
+  if (typeof draft.crux !== 'string' || draft.crux.length < 2500 || draft.crux.length > 9000 || wordCount < 450 || wordCount > 1400) throw new Error('Draft does not meet the long-form article standard.');
   if (!Array.isArray(draft.tags) || draft.tags.length < 2 || draft.tags.length > 8 || draft.tags.some(tag => typeof tag !== 'string' || tag.length > 50)) throw new Error('Invalid tags.');
   if (!['normal', 'notable', 'major'].includes(draft.severity)) throw new Error('Invalid severity.');
   if (!Array.isArray(draft.claims) || !draft.claims.length) throw new Error('Draft has no claim ledger.');
@@ -280,13 +300,13 @@ async function draftCandidate(candidate: Candidate): Promise<{ draft: Draft; sou
   const corroboration = await searchCorroboration(candidate);
   const sources = [original, ...corroboration].filter((source, index, items) => items.findIndex(other => other.publisher === source.publisher) === index);
   if (sources.length < 2) throw new Error('Fewer than two independent publisher domains supported the story.');
-  const evidence = sources.map(source => `[${source.id}] ${source.publisher}: ${source.title}\n${source.content.slice(0, 1800)}\nURL: ${source.url}`).join('\n\n');
+  const evidence = sources.map(source => `[${source.id}] ${source.publisher}: ${source.title}\n${source.content.slice(0, 3000)}\nURL: ${source.url}`).join('\n\n');
   const domain = domains.find(item => item.id === candidate.domain)!;
   const result = await callGemini(`You are the autonomous editor of AgeOfAI, a weekly technology magazine for engineers, students and curious practitioners. Use only the numbered evidence below. Never add a fact that is not supported. If sources conflict, state the disagreement in uncertainties. Write JSON only.
 
 Domain: ${domain.id}. Focus: ${domain.description}.
-Required JSON: {"title":"accurate headline","crux":"Three paragraphs separated by blank lines: what changed and how; evidence and trade-offs; why it matters in practice","tags":["2-8 specific terms"],"severity":"normal|notable|major","claims":[{"text":"each factual claim","sourceIds":["S1","S2"]}],"uncertainties":["unresolved limitation"]}.
-Every factual statement in the crux must be represented in the claim ledger. Prefer precise, restrained language. Do not call a story breaking unless severity is major.
+Required JSON: {"title":"accurate headline","crux":"A detailed 600-1000 word article in 5-7 paragraphs separated by blank lines. Explain what changed, the technical mechanism, evidence, trade-offs, practical consequences, and what remains uncertain.","tags":["2-8 specific terms"],"severity":"normal|notable|major","claims":[{"text":"each factual claim","sourceIds":["S1","S2"]}],"uncertainties":["unresolved limitation"]}.
+Every factual statement in the crux must be represented in the claim ledger. Prefer precise, restrained language. Do not pad the article, speculate beyond the evidence, or call a story breaking unless severity is major. If the sources do not support a detailed account, the draft should fail rather than invent detail.
 
 EVIDENCE\n${evidence}`);
   return { draft: validateDraft(result.value, sources), sources, modelUsed: result.modelUsed };
@@ -305,7 +325,7 @@ function weeklyEditionKey(now = new Date()): string {
 
 async function main() {
   console.log(`[AgeOfAI editor] ${previewOnly ? 'previewing' : 'building'} edition ${runId}`);
-  if (!previewOnly && (!geminiKey || !model)) throw new Error('Publishing requires GEMINI_API_KEY and GEMINI_MODEL. Run editor:preview to inspect coverage first.');
+  if (!previewOnly && (!geminiKey || !model)) throw new Error('Staging requires GEMINI_API_KEY and GEMINI_MODEL. Run editor:preview to inspect coverage first.');
   const discovered = await discover();
   report.considered = discovered.length;
   if (scanOnly) {
@@ -336,24 +356,30 @@ async function main() {
     return;
   }
   const minimumStories = Math.max(1, Number(process.env.EDITOR_MIN_STORIES || 8));
-  if (stories.length < minimumStories) throw new Error(`Only ${stories.length} stories passed verification; minimum is ${minimumStories}. Nothing was published.`);
+  if (stories.length < minimumStories) throw new Error(`Only ${stories.length} stories passed verification; minimum is ${minimumStories}. No draft issue was created.`);
   const issueInfo = await nextIssue();
   const editionKey = weeklyEditionKey();
-  if (await prisma.issue.findUnique({ where: { editionKey } })) throw new Error(`Edition ${editionKey} already exists. A scheduler retry will not create a duplicate.`);
+  if (await prisma.issue.findUnique({ where: { editionKey } })) throw new Error(`Edition ${editionKey} already exists as a draft or published issue. A scheduler retry will not create a duplicate.`);
+  const preparedStories = await Promise.all(stories.map(async item => ({ ...item, imageUrl: await findOriginalImage(item.candidate.url, item.candidate.imageUrl) })));
+  const coverStory = preparedStories.find(item => item.imageUrl);
   const issue = await prisma.$transaction(async tx => {
-    const created = await tx.issue.create({ data: { ...issueInfo, editionKey, publishedAt: new Date(), isPublished: true, layout: 'editorial-and-drama-split' } });
-    for (const item of stories) {
+    const created = await tx.issue.create({ data: {
+      ...issueInfo, editionKey, publishedAt: new Date(), isPublished: false, layout: 'editorial-and-drama-split',
+      coverImageUrl: coverStory?.imageUrl || null,
+      coverImagePrompt: coverStory ? `Original publisher image for: ${coverStory.draft.title}` : null,
+    } });
+    for (const item of preparedStories) {
       await tx.story.create({ data: {
         title: item.draft.title, crux: item.draft.crux, sourceUrl: item.candidate.url, domain: item.candidate.domain, severity: item.draft.severity,
-        publishedAt: item.candidate.publishedAt, issueId: created.id, verificationStatus: 'source-checked',
-        evidenceJson: JSON.stringify({ editorRunId: runId, model: item.modelUsed, checkedAt: new Date().toISOString(), claims: item.draft.claims, limitations: item.draft.uncertainties, sources: item.sources.map(source => ({ id: source.id, title: source.title, url: source.url, publisher: source.publisher })) }),
+        imageUrl: item.imageUrl || null, publishedAt: item.candidate.publishedAt, issueId: created.id, verificationStatus: 'source-checked',
+        evidenceJson: JSON.stringify({ editorRunId: runId, model: item.modelUsed, checkedAt: new Date().toISOString(), claims: item.draft.claims, limitations: item.draft.uncertainties, imageSourceUrl: item.imageUrl ? item.candidate.url : null, sources: item.sources.map(source => ({ id: source.id, title: source.title, url: source.url, publisher: source.publisher })) }),
         tags: { connectOrCreate: item.draft.tags.map(name => ({ where: { name }, create: { name } })) },
       } });
     }
     return created;
   });
-  report.published = stories.length;
-  console.log(JSON.stringify({ ...report, issue: { id: issue.id, volume: issue.volume, issueNumber: issue.issueNumber } }, null, 2));
+  report.staged = stories.length;
+  console.log(JSON.stringify({ ...report, issue: { id: issue.id, volume: issue.volume, issueNumber: issue.issueNumber, status: 'awaiting-admin-approval' } }, null, 2));
 }
 
 main().catch(error => { console.error(`[AgeOfAI editor] ${error instanceof Error ? error.message : String(error)}`); console.error(JSON.stringify(report, null, 2)); process.exitCode = 1; }).finally(() => prisma.$disconnect());

@@ -42,7 +42,7 @@ export default function DispatchNewsletterButton({ issueId, issueNumber }: Dispa
         disabled={sending}
         className="bg-emerald-600 text-white text-[11px] font-label-caps uppercase px-3 py-1 rounded hover:bg-emerald-700 disabled:opacity-50"
       >
-        {sending ? 'Sending...' : '📧 Send Newsletter'}
+        {sending ? 'Sending...' : 'Send Newsletter'}
       </button>
       {message && <p className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 mt-1">{message}</p>}
     </div>

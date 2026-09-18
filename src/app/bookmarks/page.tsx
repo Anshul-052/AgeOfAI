@@ -63,13 +63,13 @@ export default function BookmarksPage() {
                 onClick={handleExportMarkdown}
                 className="bg-primary text-on-primary text-xs font-label-caps uppercase px-4 py-2 rounded hover:opacity-90 transition-opacity flex items-center gap-1"
               >
-                📥 Export Markdown (.md)
+                Export Markdown (.md)
               </button>
               <button
                 onClick={handlePrintPdf}
                 className="border border-primary text-primary text-xs font-label-caps uppercase px-4 py-2 rounded hover:bg-primary hover:text-on-primary transition-colors flex items-center gap-1"
               >
-                🖨️ Print Broadsheet PDF
+                Print Broadsheet PDF
               </button>
               <button
                 onClick={handleClearAll}

@@ -180,7 +180,7 @@ export function generateBroadsheetPages(
                     rel="noreferrer"
                     className="text-xs font-label-caps uppercase text-primary hover:underline font-bold"
                   >
-                    Read Full Paper & Code ↗
+                    Read Full Paper and Code
                   </a>
                 </section>
               )}
@@ -198,7 +198,7 @@ export function generateBroadsheetPages(
         <div className="border-b-2 border-emerald-600 pb-2 mb-2.5 flex justify-between items-center shrink-0">
           <div>
             <h2 className="font-headline-md text-xl md:text-2xl uppercase tracking-wider text-emerald-800 dark:text-emerald-300 font-bold">
-              🎯 Student Opportunities & Grants
+              Student Opportunities and Grants
             </h2>
             <p className="text-xs font-mono text-on-surface-variant uppercase mt-0.5">
               Hackathons, Internships, Fellowships & Free Cloud Credits
@@ -221,7 +221,7 @@ export function generateBroadsheetPages(
                   <div>
                     <div className="flex justify-between items-start mb-1.5">
                       <span className="text-[10px] font-mono uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-bold border border-emerald-500/30">
-                        {story.severity === 'major' ? '🔥 Featured Opportunity' : 'Opportunity'}
+                        {story.severity === 'major' ? 'Featured Opportunity' : 'Opportunity'}
                       </span>
                       <span className="text-[10px] font-mono text-on-surface-variant">
                         {pubDateStr}
@@ -251,7 +251,7 @@ export function generateBroadsheetPages(
                       rel="noreferrer"
                       className="text-xs font-label-caps uppercase text-emerald-700 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
                     >
-                      Apply / Learn More ↗
+                      Apply or learn more
                     </a>
                   </div>
                 </article>
@@ -271,10 +271,10 @@ export function generateBroadsheetPages(
         <div className="border-b-2 border-blue-600 pb-2 mb-2.5 flex justify-between items-center shrink-0">
           <div>
             <h2 className="font-headline-md text-xl md:text-2xl uppercase tracking-wider text-blue-800 dark:text-blue-300 font-bold">
-              🎓 Campus & Student Edition
+              Campus and Student Edition
             </h2>
             <p className="text-xs font-mono text-on-surface-variant uppercase mt-0.5">
-              Ask the Engineer, Learning Resources, Student Opportunities & Career Guidance
+              Learning Resources, Student Opportunities and Career Guidance
             </p>
           </div>
           <span className="text-xs font-mono bg-blue-600 text-white px-3 py-1 rounded uppercase font-bold">
@@ -294,7 +294,7 @@ export function generateBroadsheetPages(
                   <div>
                     <div className="flex justify-between items-start mb-1.5">
                       <span className="text-[10px] font-mono uppercase bg-blue-500/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-bold border border-blue-500/30">
-                        {story.severity === 'major' ? '🔥 Featured' : 'Campus'}
+                        {story.severity === 'major' ? 'Featured' : 'Campus'}
                       </span>
                       <span className="text-[10px] font-mono text-on-surface-variant">
                         {pubDateStr}
@@ -324,7 +324,7 @@ export function generateBroadsheetPages(
                       rel="noreferrer"
                       className="text-xs font-label-caps uppercase text-blue-700 dark:text-blue-400 font-bold hover:underline flex items-center gap-1"
                     >
-                      Read More ↗
+                      Read more
                     </a>
                   </div>
                 </article>

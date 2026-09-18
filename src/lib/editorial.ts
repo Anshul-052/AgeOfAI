@@ -7,6 +7,25 @@ export class EditorialError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }
 
+export async function publishIssue(db: PrismaClient, issueId: string) {
+  if (!issueId.trim()) throw new EditorialError('issueId is required.', 400);
+  return db.$transaction(async tx => {
+    const draft = await tx.issue.findUnique({
+      where: { id: issueId },
+      include: { _count: { select: { stories: true } } },
+    });
+    if (!draft) throw new EditorialError('Issue not found.', 404);
+    if (draft.isPublished) throw new EditorialError('This issue is already published.', 409);
+    if (draft._count.stories === 0) throw new EditorialError('An empty issue cannot be published.', 400);
+    const claimed = await tx.issue.updateMany({
+      where: { id: issueId, isPublished: false },
+      data: { isPublished: true, publishedAt: new Date() },
+    });
+    if (claimed.count !== 1) throw new EditorialError('The issue publication state changed. Refresh and try again.', 409);
+    return tx.issue.findUniqueOrThrow({ where: { id: issueId } });
+  });
+}
+
 export async function approveCandidate(db: PrismaClient, input: unknown) {
   if (!input || typeof input !== 'object') throw new EditorialError('Review details are required.', 400);
   const data = input as Record<string, unknown>;
@@ -36,10 +55,8 @@ export async function approveCandidate(db: PrismaClient, input: unknown) {
     if (!candidate) throw new EditorialError('Candidate not found.', 404);
     if (candidate.status !== 'drafted') throw new EditorialError('Only a drafted candidate can be approved. Refresh the inbox.', 409);
     const issue = await tx.issue.findUnique({ where: { id: issueId } });
-    if (!issue || !issue.isPublished || issue.publishedAt > new Date()) {
-      throw new EditorialError('Choose an existing published issue.', 400);
-    }
-    // Claim and create atomically so repeated approval cannot publish duplicate stories.
+    if (!issue) throw new EditorialError('Choose an existing issue.', 400);
+    // Claim and create atomically so repeated approval cannot add duplicate stories.
     const claimed = await tx.ingestedCandidate.updateMany({
       where: { id: candidateId, status: 'drafted' }, data: { status: 'published' },
     });
@@ -47,7 +64,7 @@ export async function approveCandidate(db: PrismaClient, input: unknown) {
     return tx.story.create({
       data: {
         title, crux, domain, severity, issueId, sourceUrl: candidate.sourceUrl,
-        publishedAt: new Date(),
+        publishedAt: new Date(), verificationStatus: 'editor-reviewed',
         tags: { connectOrCreate: tags.map(name => ({ where: { name }, create: { name } })) },
       },
       include: { tags: true },

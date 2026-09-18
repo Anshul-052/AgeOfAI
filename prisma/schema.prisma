@@ -60,7 +60,7 @@ model TokenUsage {
   promptTokens    Int
   candidateTokens Int
   totalTokens     Int
-  action          String   @default("ai-draft") // ai-draft, explain, image-gen
+  action          String   @default("ai-draft")
   domain          String? // LLMs, Robotics, Cybersecurity, etc.
   isCacheHit      Boolean  @default(false)
   createdAt       DateTime @default(now())

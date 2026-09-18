@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { getTokenUsageStats, DomainTokenStats } from "@/lib/gemini";
 import { Issue, Story } from "@prisma/client";
 import DispatchNewsletterButton from "./DispatchNewsletterButton";
-import GenerateCoverArtButton from "./GenerateCoverArtButton";
+import IssuePublicationButton from "./IssuePublicationButton";
 
 export default async function AdminPage() {
   let issues: Issue[] = [];
@@ -15,8 +15,6 @@ export default async function AdminPage() {
     requestCount: 0,
     cacheHitCount: 0,
     draftCount: 0,
-    explainCount: 0,
-    imageCount: 0,
     freeTierLimit: 1000000,
     remainingTokens: 1000000,
     percentUsed: 0,
@@ -42,7 +40,7 @@ export default async function AdminPage() {
         </div>
         <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
           <Link href="/admin/inbox" className="bg-blue-600 text-white px-4 py-2 hover:bg-blue-700 font-label-caps uppercase text-xs transition-colors rounded">
-            📥 Ingestion Inbox
+            Ingestion Inbox
           </Link>
           <Link href="/admin/issues/new" className="border border-primary px-4 py-2 hover:bg-primary hover:text-on-primary font-label-caps uppercase text-xs transition-colors rounded">
             + New Issue
@@ -70,26 +68,18 @@ export default async function AdminPage() {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 text-center">
           <div className="p-3 bg-background border border-outline-variant rounded">
             <span className="text-[10px] uppercase text-on-surface-variant block font-label-caps">Total Requests</span>
             <span className="text-xl font-bold font-mono">{tokenStats.requestCount}</span>
           </div>
           <div className="p-3 bg-background border border-outline-variant rounded">
-            <span className="text-[10px] uppercase text-on-surface-variant block font-label-caps">⚡ Cache Hits</span>
+            <span className="text-[10px] uppercase text-on-surface-variant block font-label-caps">Cache Hits</span>
             <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">{tokenStats.cacheHitCount}</span>
           </div>
           <div className="p-3 bg-background border border-outline-variant rounded">
             <span className="text-[10px] uppercase text-on-surface-variant block font-label-caps">Draft Calls</span>
             <span className="text-xl font-bold font-mono text-blue-600 dark:text-blue-400">{tokenStats.draftCount}</span>
-          </div>
-          <div className="p-3 bg-background border border-outline-variant rounded">
-            <span className="text-[10px] uppercase text-on-surface-variant block font-label-caps">Tutor Explains</span>
-            <span className="text-xl font-bold font-mono text-purple-600 dark:text-purple-400">{tokenStats.explainCount}</span>
-          </div>
-          <div className="p-3 bg-background border border-outline-variant rounded">
-            <span className="text-[10px] uppercase text-on-surface-variant block font-label-caps">Cover Art Gens</span>
-            <span className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400">{tokenStats.imageCount}</span>
           </div>
         </div>
 
@@ -181,8 +171,11 @@ export default async function AdminPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2 pt-2 border-t border-outline-variant/40">
-                  <DispatchNewsletterButton issueId={issue.id} issueNumber={issue.issueNumber} />
-                  <GenerateCoverArtButton issueId={issue.id} hasCover={Boolean(issue.coverImageUrl)} />
+                  {issue.isPublished ? (
+                    <DispatchNewsletterButton issueId={issue.id} issueNumber={issue.issueNumber} />
+                  ) : (
+                    <IssuePublicationButton issueId={issue.id} issueNumber={issue.issueNumber} />
+                  )}
                 </div>
               </li>
             ))}

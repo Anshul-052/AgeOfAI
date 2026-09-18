@@ -32,7 +32,7 @@ export default function AdminInboxPage() {
     tags: ''
   });
   const [approving, setApproving] = useState(false);
-  const [issues, setIssues] = useState<{ id: string; volume: string; issueNumber: number }[]>([]);
+  const [issues, setIssues] = useState<{ id: string; volume: string; issueNumber: number; isPublished: boolean }[]>([]);
   const [issueId, setIssueId] = useState('');
   const [error, setError] = useState('');
 
@@ -57,7 +57,7 @@ export default function AdminInboxPage() {
     // Initial client-side data hydration is intentionally performed on mount.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCandidates();
-    fetch('/api/issues').then(async res => {
+    fetch('/api/admin/issues').then(async res => {
       if (!res.ok) throw new Error('Failed to load issues.');
       const data = await res.json();
       setIssues(data.issues || []);
@@ -170,7 +170,7 @@ export default function AdminInboxPage() {
           disabled={ingesting}
           className="mt-4 sm:mt-0 bg-primary text-on-primary px-4 py-2 font-label-caps uppercase text-xs hover:opacity-90 disabled:opacity-50 transition-opacity"
         >
-          {ingesting ? "Fetching Sources..." : "⚡ Run Ingestion Now"}
+          {ingesting ? "Fetching Sources..." : "Run Ingestion Now"}
         </button>
       </div>
 
@@ -235,7 +235,7 @@ export default function AdminInboxPage() {
                   )}
                   {cacheNotice[item.id] && (
                     <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">
-                      ⚡ Cache Hit (0 Tokens)
+                      Cache Hit (0 Tokens)
                     </span>
                   )}
                   <span className={`text-[10px] font-label-caps uppercase px-2 py-0.5 rounded ${
@@ -249,7 +249,7 @@ export default function AdminInboxPage() {
 
               <h2 className="font-headline-md text-lg mb-2">
                 <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
-                  {item.rawTitle} ↗
+                  {item.rawTitle}
                 </a>
               </h2>
 
@@ -279,7 +279,7 @@ export default function AdminInboxPage() {
 
                 {item.status === 'published' && (
                   <span className="text-xs text-emerald-600 font-label-caps uppercase py-1">
-                    ✓ Approved & Published to Magazine
+                    Approved and added to an issue
                   </span>
                 )}
               </div>
@@ -297,12 +297,12 @@ export default function AdminInboxPage() {
             <form onSubmit={handleApprove} className="space-y-4">
               {error && <p role="alert" className="text-red-700 border border-red-700 p-3">{error}</p>}
               <div>
-                <label htmlFor="publication-issue" className="block text-xs font-label-caps uppercase mb-1">Publish in issue</label>
+                <label htmlFor="publication-issue" className="block text-xs font-label-caps uppercase mb-1">Add to issue</label>
                 <select id="publication-issue" required value={issueId} onChange={e => setIssueId(e.target.value)} className="w-full border border-outline p-2 bg-transparent text-sm">
                   <option value="">Select an issue</option>
-                  {issues.map(issue => <option key={issue.id} value={issue.id}>{issue.volume} — Issue {issue.issueNumber}</option>)}
+                  {issues.map(issue => <option key={issue.id} value={issue.id}>{issue.volume} — Issue {issue.issueNumber} ({issue.isPublished ? 'published' : 'draft'})</option>)}
                 </select>
-                {issues.length === 0 && <Link href="/admin/issues/new" className="text-sm underline">Create an issue before publishing.</Link>}
+                {issues.length === 0 && <Link href="/admin/issues/new" className="text-sm underline">Create a draft issue first.</Link>}
               </div>
               <div>
                 <label className="block text-xs font-label-caps uppercase mb-1">Headline / Title</label>
@@ -374,7 +374,7 @@ export default function AdminInboxPage() {
                   disabled={approving || !issueId}
                   className="px-4 py-2 bg-emerald-600 text-white font-label-caps uppercase text-xs hover:bg-emerald-700 disabled:opacity-50"
                 >
-                  {approving ? "Publishing..." : "Approve & Publish Story"}
+                  {approving ? "Adding..." : "Approve and add to issue"}
                 </button>
               </div>
             </form>

@@ -246,109 +246,6 @@ ${content}`;
   }
 }
 
-export async function explainConceptWithGemini(storyTitle: string, storyCrux: string, question: string, domain?: string) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey.includes('YourGeminiKey') || apiKey.startsWith('AQ.')) {
-    return {
-      explanation: `### Technical Overview: ${storyTitle}\n\n**Concept Breakdown:**\n${storyCrux}\n\n*Question Answer:* Regarding "${question}", this system utilizes state-of-the-art software architecture and algorithmic optimizations to ensure high-throughput execution.`,
-      usage: {
-        promptTokens: 0,
-        candidateTokens: 0,
-        totalTokens: 0,
-        modelName: 'heuristic-tutor',
-        isCacheHit: false
-      }
-    };
-  }
-
-  const model = 'gemini-1.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-  const prompt = `You are "Ask the Engineer", an expert tech tutor for engineers and students reading "AgeOfAI".
-Context Article Title: "${storyTitle}"
-Context Summary: "${storyCrux}"
-
-Student Question: "${question}"
-
-Please provide a clear, rigorous, yet accessible technical explanation.
-- Include code snippets or pseudocode if applicable.
-- Break down architectural components or algorithmic steps concisely.
-- Format using standard Markdown headings, bold text, bullet points, and code blocks.`;
-
-  const payload = {
-    contents: [
-      {
-        parts: [{ text: prompt }]
-      }
-    ],
-    generationConfig: {
-      temperature: 0.3,
-      maxOutputTokens: 1200
-    }
-  };
-
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) {
-      const errorBody = await res.text();
-      throw new Error(`Gemini API error ${res.status}: ${errorBody}`);
-    }
-
-    const data = await res.json();
-    const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text || "Unable to generate explanation.";
-
-    const usageMetadata = data.usageMetadata || {};
-    const promptTokens = usageMetadata.promptTokenCount || 0;
-    const candidateTokens = usageMetadata.candidatesTokenCount || 0;
-    const totalTokens = usageMetadata.totalTokenCount || (promptTokens + candidateTokens);
-
-    try {
-      await prisma.tokenUsage.create({
-        data: {
-          provider: 'google',
-          modelName: model,
-          promptTokens,
-          candidateTokens,
-          totalTokens,
-          action: 'explain',
-          domain: domain || 'General',
-          isCacheHit: false
-        }
-      });
-    } catch (dbErr) {
-      console.error('Failed to log explain token usage:', dbErr);
-    }
-
-    return {
-      explanation,
-      usage: {
-        promptTokens,
-        candidateTokens,
-        totalTokens,
-        modelName: model,
-        isCacheHit: false
-      }
-    };
-  } catch (err) {
-    console.warn('Gemini Explain API failed, returning fallback explanation:', err);
-    return {
-      explanation: `### Technical Overview: ${storyTitle}\n\n**Summary:**\n${storyCrux}\n\n*Explanation for "${question}":* This architecture relies on verified algorithmic invariants and decoupled component layers for maximum stability.`,
-      usage: {
-        promptTokens: 0,
-        candidateTokens: 0,
-        totalTokens: 0,
-        modelName: 'fallback-tutor',
-        isCacheHit: false
-      }
-    };
-  }
-}
-
 export async function getTokenUsageStats() {
   const aggregate = await prisma.tokenUsage.aggregate({
     _sum: {
@@ -367,14 +264,6 @@ export async function getTokenUsageStats() {
 
   const draftCount = await prisma.tokenUsage.count({
     where: { action: 'ai-draft' }
-  });
-
-  const explainCount = await prisma.tokenUsage.count({
-    where: { action: 'explain' }
-  });
-
-  const imageCount = await prisma.tokenUsage.count({
-    where: { action: 'image-gen' }
   });
 
   // Per-domain breakdown
@@ -422,8 +311,6 @@ export async function getTokenUsageStats() {
     requestCount,
     cacheHitCount,
     draftCount,
-    explainCount,
-    imageCount,
     freeTierLimit,
     remainingTokens,
     percentUsed: Math.min(100, Number(((totalUsed / freeTierLimit) * 100).toFixed(2))),
