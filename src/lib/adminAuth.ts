@@ -26,3 +26,15 @@ export function credentialsMatch(provided: string | null, expected: string | und
   return difference === 0;
 }
 
+export const ADMIN_SESSION_COOKIE = 'ageofai_admin_session';
+
+export async function createAdminSession(secret: string): Promise<string> {
+  const bytes = new TextEncoder().encode(`AgeOfAI admin session:${secret}`);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+export async function adminSessionMatches(session: string | null, secret: string | undefined): Promise<boolean> {
+  if (!session || !secret) return false;
+  return credentialsMatch(session, await createAdminSession(secret));
+}

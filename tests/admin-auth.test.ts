@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { credentialsMatch, readAdminCredential } from '../src/lib/adminAuth';
+import { adminSessionMatches, createAdminSession, credentialsMatch, readAdminCredential } from '../src/lib/adminAuth';
 
 test('admin credentials accept a configured bearer token', () => {
   const credential = readAdminCredential('Bearer long-random-secret');
@@ -19,3 +19,9 @@ test('admin access stays disabled when no secret is configured', () => {
   assert.equal(readAdminCredential(null), null);
 });
 
+test('admin sessions are derived from the configured secret', async () => {
+  const session = await createAdminSession('long-random-secret');
+  assert.equal(await adminSessionMatches(session, 'long-random-secret'), true);
+  assert.equal(await adminSessionMatches(session, 'another-secret'), false);
+  assert.equal(await adminSessionMatches(null, 'long-random-secret'), false);
+});

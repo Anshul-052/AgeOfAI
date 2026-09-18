@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { credentialsMatch, readAdminCredential } from '@/lib/adminAuth';
+import { ADMIN_SESSION_COOKIE, adminSessionMatches, credentialsMatch, readAdminCredential } from '@/lib/adminAuth';
 
 function isProtectedRequest(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  if (path === '/admin/login' || path === '/api/admin/login') return false;
   if (path === '/admin' || path.startsWith('/admin/')) return true;
   if (path === '/api/admin' || path.startsWith('/api/admin/')) return true;
   if (path === '/api/ai-draft') return true;
@@ -14,7 +15,7 @@ function isProtectedRequest(request: NextRequest) {
   );
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   if (!isProtectedRequest(request)) return NextResponse.next();
 
   const expected = process.env.ADMIN_ACCESS_KEY;
@@ -23,15 +24,14 @@ export function proxy(request: NextRequest) {
   }
 
   const provided = readAdminCredential(request.headers.get('authorization'));
-  if (credentialsMatch(provided, expected)) return NextResponse.next();
+  const session = request.cookies.get(ADMIN_SESSION_COOKIE)?.value || null;
+  if (credentialsMatch(provided, expected) || await adminSessionMatches(session, expected)) return NextResponse.next();
 
-  return NextResponse.json(
-    { error: 'Admin authorization required' },
-    {
-      status: 401,
-      headers: { 'WWW-Authenticate': 'Basic realm="AgeOfAI admin", charset="UTF-8"' }
-    }
-  );
+  if (request.nextUrl.pathname === '/admin' || request.nextUrl.pathname.startsWith('/admin/')) {
+    const login = new URL('/admin/login', request.url);
+    return NextResponse.redirect(login);
+  }
+  return NextResponse.json({ error: 'Admin authorization required' }, { status: 401 });
 }
 
 export const config = {
