@@ -1,0 +1,16 @@
+{
+  "name": "AgeOfAI — Weekly Broadsheet Magazine",
+  "short_name": "AgeOfAI",
+  "description": "Weekly AI-curated digital broadsheet magazine for computer science and engineering students.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

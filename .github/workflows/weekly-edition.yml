@@ -1,0 +1,64 @@
+name: Publish weekly AgeOfAI edition
+
+on:
+  schedule:
+    # Sunday at 09:00 Asia/Kolkata (03:30 UTC).
+    - cron: '30 3 * * 0'
+  workflow_dispatch:
+
+concurrency:
+  group: ageofai-weekly-edition
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_POOL_SIZE: '1'
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: gemini-flash-latest
+      GEMINI_FALLBACK_MODEL: gemini-flash-lite-latest
+      TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+      EDITOR_LOOKBACK_DAYS: '8'
+      EDITOR_MAX_PER_DOMAIN: '2'
+      EDITOR_MIN_STORIES: '8'
+      EDITOR_SEARCH_DISCOVERY: 'true'
+
+    steps:
+      - name: Check out publication
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          test -n "$DATABASE_URL" || { echo "DATABASE_URL secret is missing"; exit 1; }
+          test -n "$GEMINI_API_KEY" || { echo "GEMINI_API_KEY secret is missing"; exit 1; }
+
+      - name: Build and publish the verified edition
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run editor:edition | tee editor-report.json
+
+      - name: Retain the editorial report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-report-${{ github.run_id }}
+          path: editor-report.json
+          if-no-files-found: ignore
+          retention-days: 30

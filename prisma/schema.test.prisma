@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma-test"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Issue {
+  id               String   @id @default(cuid())
+  editionKey       String?  @unique
+  volume           String
+  issueNumber      Int
+  publishedAt      DateTime
+  isPublished      Boolean  @default(false)
+  layout           String   @default("lead-story-focus")
+  coverImageUrl    String?
+  coverImagePrompt String?
+  stories          Story[]
+  deliveries       NewsletterDelivery[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Story {
+  id                 String   @id @default(cuid())
+  title              String
+  crux               String
+  sourceUrl          String   @unique
+  imageUrl           String?
+  videoUrl           String?
+  domain             String
+  severity           String   @default("normal")
+  evidenceJson       String?
+  verificationStatus String   @default("legacy")
+  publishedAt        DateTime
+  issueId             String?
+  issue               Issue?   @relation(fields: [issueId], references: [id])
+  tags                Tag[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([domain])
+  @@index([publishedAt])
+}
+
+model Tag {
+  id      String  @id @default(cuid())
+  name    String  @unique
+  stories Story[]
+}
+
+model TokenUsage {
+  id              String   @id @default(cuid())
+  provider        String   @default("google")
+  modelName       String   @default("gemini-1.5-flash")
+  promptTokens    Int
+  candidateTokens Int
+  totalTokens     Int
+  action          String   @default("ai-draft")
+  domain          String?
+  isCacheHit      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  @@index([domain])
+}
+
+model IngestedCandidate {
+  id              String   @id @default(cuid())
+  source          String
+  rawTitle        String
+  rawContent      String
+  sourceUrl       String
+  contentHash     String   @unique
+  status          String   @default("pending")
+  draftJson       String?
+  suggestedDomain String?
+  fetchedAt       DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
+}
+
+model ResponseCache {
+  id          String   @id @default(cuid())
+  contentHash String   @unique
+  draftJson   String
+  createdAt   DateTime @default(now())
+}
+
+model Subscriber {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  status       String   @default("active")
+  subscribedAt DateTime @default(now())
+  deliveries  NewsletterDelivery[]
+}
+
+model NewsletterDelivery {
+  id           String     @id @default(cuid())
+  issueId      String
+  subscriberId String
+  status       String     @default("pending")
+  attemptId    String?
+  providerId   String?
+  lastError    String?
+  sentAt       DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  issue        Issue      @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  subscriber   Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, subscriberId])
+  @@index([status])
+}

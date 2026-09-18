@@ -1,0 +1,191 @@
+[
+  {
+    "id": "LLMs",
+    "label": "AI & language models",
+    "description": "Model releases, inference and applied AI",
+    "query": "AI model release inference",
+    "feed": "https://huggingface.co/blog/feed.xml"
+  },
+  {
+    "id": "Robotics",
+    "label": "Robotics",
+    "description": "Robots, autonomy and embodied intelligence",
+    "query": "robotics autonomous robots engineering",
+    "feed": "https://spectrum.ieee.org/feeds/topic/robotics.rss"
+  },
+  {
+    "id": "Cybersecurity",
+    "label": "Cybersecurity",
+    "description": "Vulnerabilities, privacy and digital defense",
+    "query": "cybersecurity vulnerability security research",
+    "feed": "https://www.cisa.gov/cybersecurity-advisories/all.xml"
+  },
+  {
+    "id": "Research",
+    "label": "Research",
+    "description": "Papers, algorithms and scientific computing",
+    "query": "computer science research breakthrough",
+    "feed": "https://export.arxiv.org/rss/cs"
+  },
+  {
+    "id": "Tools",
+    "label": "Developer tools",
+    "description": "Languages, open source and engineering workflows",
+    "query": "developer tools programming language release",
+    "feed": "https://github.blog/feed/"
+  },
+  {
+    "id": "Web Development",
+    "label": "Web development",
+    "description": "Browsers, frameworks and the open web",
+    "query": "web development browser framework release",
+    "feed": "https://webkit.org/feed/"
+  },
+  {
+    "id": "Cloud & DevOps",
+    "label": "Cloud & DevOps",
+    "description": "Infrastructure, containers and reliability",
+    "query": "cloud infrastructure kubernetes devops release",
+    "feed": "https://kubernetes.io/feed.xml"
+  },
+  {
+    "id": "Data & Databases",
+    "label": "Data & databases",
+    "description": "Data systems, analytics and storage",
+    "query": "database data engineering release",
+    "feed": "https://www.postgresql.org/news.rss"
+  },
+  {
+    "id": "Hardware",
+    "label": "Hardware & chips",
+    "description": "Semiconductors, GPUs and computing architecture",
+    "query": "semiconductor processor hardware release",
+    "feed": "https://www.tomshardware.com/feeds/all"
+  },
+  {
+    "id": "Mobile",
+    "label": "Mobile",
+    "description": "Phones, mobile platforms and on-device computing",
+    "query": "mobile android ios development release",
+    "feed": "https://android-developers.googleblog.com/feeds/posts/default"
+  },
+  {
+    "id": "Gaming",
+    "label": "Gaming & graphics",
+    "description": "Game engines, rendering and interactive worlds",
+    "query": "game engine graphics technology release",
+    "feed": "https://godotengine.org/rss.xml"
+  },
+  {
+    "id": "XR & Spatial Computing",
+    "label": "XR & spatial",
+    "description": "Augmented reality, virtual reality and spatial interfaces",
+    "query": "augmented virtual reality spatial computing technology",
+    "feed": "https://www.uploadvr.com/rss/"
+  },
+  {
+    "id": "Networks & Telecom",
+    "label": "Networks & telecom",
+    "description": "Connectivity, satellites and next-generation networks",
+    "query": "networking telecom 6G connectivity technology",
+    "feed": "https://www.mobileworldlive.com/feed/"
+  },
+  {
+    "id": "IoT & Embedded",
+    "label": "IoT & embedded",
+    "description": "Connected devices, firmware and edge systems",
+    "query": "embedded systems IoT firmware technology",
+    "feed": "https://www.raspberrypi.com/news/feed/"
+  },
+  {
+    "id": "Quantum Computing",
+    "label": "Quantum",
+    "description": "Quantum hardware, algorithms and error correction",
+    "query": "quantum computing research engineering",
+    "feed": "https://phys.org/rss-feed/technology-news/quantum-physics/"
+  },
+  {
+    "id": "Space Tech",
+    "label": "Space tech",
+    "description": "Spaceflight, satellites and aerospace engineering",
+    "query": "space technology satellite aerospace engineering",
+    "feed": "https://www.nasa.gov/news-release/feed/"
+  },
+  {
+    "id": "Climate & Energy",
+    "label": "Climate & energy",
+    "description": "Batteries, renewables and climate engineering",
+    "query": "battery renewable energy climate technology breakthrough",
+    "feed": "https://www.energy.gov/rss.xml"
+  },
+  {
+    "id": "Health & Biotech",
+    "label": "Health & biotech",
+    "description": "Medical devices, biotechnology and computational biology",
+    "query": "medical technology biotechnology engineering research",
+    "feed": "https://news.mit.edu/rss/topic/biotechnology"
+  },
+  {
+    "id": "Transport & EVs",
+    "label": "Transport & EVs",
+    "description": "Electric mobility, vehicle software and transport systems",
+    "query": "electric vehicle battery transport technology",
+    "feed": "https://electrek.co/feed/"
+  },
+  {
+    "id": "Crypto & Web3",
+    "label": "Crypto & Web3",
+    "description": "Cryptography, protocols and decentralized infrastructure",
+    "query": "blockchain cryptography protocol engineering",
+    "feed": "https://blog.ethereum.org/feed.xml"
+  },
+  {
+    "id": "Fintech",
+    "label": "Fintech",
+    "description": "Payments infrastructure and financial technology",
+    "query": "fintech payments infrastructure technology",
+    "feed": "https://techcrunch.com/category/fintech/feed/"
+  },
+  {
+    "id": "Enterprise & SaaS",
+    "label": "Enterprise & SaaS",
+    "description": "Business software, productivity and enterprise systems",
+    "query": "enterprise software SaaS technology release",
+    "feed": "https://www.salesforce.com/news/feed/"
+  },
+  {
+    "id": "Startups & Funding",
+    "label": "Startups & funding",
+    "description": "New companies, funding and the technology economy",
+    "query": "technology startup funding engineering",
+    "feed": "https://techcrunch.com/category/startups/feed/"
+  },
+  {
+    "id": "Policy & Society",
+    "label": "Policy & society",
+    "description": "Technology governance, digital rights and social impacts",
+    "query": "technology policy digital rights regulation",
+    "feed": "https://www.eff.org/rss/updates.xml"
+  },
+  {
+    "id": "Opportunities",
+    "label": "Opportunities",
+    "description": "Hackathons, fellowships and open-source programs",
+    "query": "developer hackathon fellowship open source opportunity",
+    "feed": "https://opensource.googleblog.com/feeds/posts/default"
+  },
+  {
+    "id": "Campus",
+    "label": "Learning & careers",
+    "description": "Practical learning, engineering careers and projects",
+    "query": "computer science placement interview open source student project",
+    "feed": "https://www.freecodecamp.org/news/rss/"
+  },
+  {
+    "id": "Drama",
+    "label": "The back page",
+    "description": "Disputes, controversies and industry accountability",
+    "query": "technology industry controversy dispute",
+    "feed": "https://www.theverge.com/rss/index.xml"
+  }
+]

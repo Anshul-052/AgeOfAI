@@ -1,0 +1,48 @@
+{
+  "name": "ageofai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts tests/*.test.mjs",
+    "postinstall": "prisma generate --schema prisma/schema.prisma && prisma generate --schema prisma/schema.test.prisma",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma && prisma generate --schema prisma/schema.test.prisma",
+    "db:migrate-content": "tsx scripts/migrate-sqlite-to-supabase.ts",
+    "editor:scan": "tsx scripts/ai-editor.ts --scan-only",
+    "editor:preview": "tsx scripts/ai-editor.ts --preview",
+    "editor:edition": "tsx scripts/ai-editor.ts --publish"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
+    "@prisma/adapter-better-sqlite3": "7.8.0",
+    "@prisma/adapter-pg": "7.8.0",
+    "@prisma/client": "7.8.0",
+    "better-sqlite3": "^12.11.1",
+    "fast-xml-parser": "^5.11.1",
+    "next": "16.3.5",
+    "pg": "^8.11.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-pageflip": "^2.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8.11.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.5",
+    "postcss": "^8",
+    "prisma": "7.8.0",
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.23.0",
+    "typescript": "^5"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

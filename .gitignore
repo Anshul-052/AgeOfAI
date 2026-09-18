@@ -1,0 +1,61 @@
+# Dependencies and package-manager state
+/node_modules/
+/.pnp/
+.pnp.js
+/.pnpm-store/
+/.npm/
+/.yarn/cache/
+/.yarn/install-state.gz
+
+# Local environment files and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Local databases
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Next.js and production output
+/.next/
+/out/
+/build/
+/dist/
+/.vercel/
+
+# Generated clients, caches, and test output
+/generated/prisma-test/
+/src/generated/prisma/
+/coverage/
+/test-results/
+/playwright-report/
+/.cache/
+/.turbo/
+.eslintcache
+*.tsbuildinfo
+next-env.d.ts
+
+# Supabase CLI machine-specific state; keep config and migrations tracked
+/supabase/.branches/
+/supabase/.temp/
+
+# Autonomous editor and operational output
+/editor-report*.json
+/reports/
+/logs/
+*.log
+
+# Local tooling and operating-system files
+/.idea/
+/.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
