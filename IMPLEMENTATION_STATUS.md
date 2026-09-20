@@ -28,6 +28,9 @@ The publication workflow is evidence-gated and ends with an administrator decisi
 - Newsletter unsubscribe links use HMAC signatures, dispatches require complete configuration, and per-subscriber delivery records plus Resend idempotency keys prevent duplicate sends on retries.
 - Inbox approval is transactional, accepts a selected draft or published issue, validates fields, prevents duplicate publication, and invalidates affected pages.
 - Draft issues remain invisible on all public pages until the protected admin confirmation publishes them in one transaction.
+- Supabase email/password reader accounts provide a measurable registered-user count in the admin dashboard. When the public Supabase environment variables are configured, reader pages require a valid session.
+- The inbox supports checkbox selection, batch Gemini drafting, and atomic addition of selected completed drafts to an issue.
+- The manual Gemini drafter uses the configured current model, retrieves fuller source-page text when feeds are sparse, targets clear 220–400 word journalistic reports, retries undersized output, and records provider-reported tokens transactionally with the cached draft.
 - Offline caching excludes private/admin/API traffic, RSC payloads, and third-party requests.
 - A GitHub Actions workflow is ready to prepare a private draft every Sunday at 09:00 Asia/Kolkata, prevent overlapping runs, support manual runs, and retain editorial reports for 30 days.
 

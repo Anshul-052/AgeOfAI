@@ -27,7 +27,7 @@ export interface DomainTokenStats {
 }
 
 export function computeContentHash(text: string): string {
-  return crypto.createHash('sha256').update(text.trim()).digest('hex');
+  return crypto.createHash('sha256').update(`journalistic-v4\n${text.trim()}`).digest('hex');
 }
 
 export async function draftStoryWithGemini(content: string, domainHint?: string): Promise<{
@@ -59,7 +59,7 @@ export async function draftStoryWithGemini(content: string, domainHint?: string)
       await prisma.tokenUsage.create({
         data: {
           provider: 'google',
-          modelName: 'gemini-1.5-flash',
+          modelName: process.env.GEMINI_MODEL || 'gemini-flash-latest',
           promptTokens: 0,
           candidateTokens: 0,
           totalTokens: 0,
@@ -78,54 +78,25 @@ export async function draftStoryWithGemini(content: string, domainHint?: string)
         promptTokens: 0,
         candidateTokens: 0,
         totalTokens: 0,
-        modelName: 'gemini-1.5-flash',
+        modelName: process.env.GEMINI_MODEL || 'gemini-flash-latest',
         isCacheHit: true
       }
     };
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
-  // If API key is missing or unconfigured placeholder, generate structured fallback draft
-  if (!apiKey || apiKey.includes('YourGeminiKey') || apiKey.startsWith('AQ.')) {
-    console.warn('GEMINI_API_KEY unconfigured or invalid key provided. Using structured heuristic drafting fallback.');
-    
-    const cruxText = content.length > 600 ? content.slice(0, 600) + '...' : content;
-    const fallbackDraft: DraftStoryResult = {
-      crux: cruxText,
-      tags: ["Tech", "Engineering"],
-      domain: domainHint || "LLMs",
-      severity: "normal"
-    };
-
-    try {
-      await prisma.responseCache.upsert({
-        where: { contentHash },
-        update: { draftJson: JSON.stringify(fallbackDraft) },
-        create: { contentHash, draftJson: JSON.stringify(fallbackDraft) }
-      });
-    } catch (cacheErr) {
-      console.error('Failed to store fallback response cache:', cacheErr);
-    }
-
-    return {
-      draft: fallbackDraft,
-      usage: {
-        promptTokens: 0,
-        candidateTokens: 0,
-        totalTokens: 0,
-        modelName: 'heuristic-drafter',
-        isCacheHit: false
-      }
-    };
+  // Never present source truncation as an AI draft. Configuration failures must remain visible.
+  if (!apiKey || apiKey.includes('YourGeminiKey')) {
+    throw new Error('GEMINI_API_KEY is not configured correctly. No draft was saved.');
   }
 
-  const model = 'gemini-1.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const model = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+  const fallbackModel = process.env.GEMINI_FALLBACK_MODEL || 'gemini-flash-lite-latest';
 
   const domainList = domains.map(domain => domain.id);
 
-  const prompt = `You are an expert tech journalist writing for "AgeOfAI," a weekly broadsheet magazine for engineers and students.
-Given the following raw text or article content, generate a concise, engaging summary (crux) of 2-3 paragraphs.
+  const prompt = `You are a careful technology journalist writing for AgeOfAI, a weekly magazine for engineers, students, and curious readers.
+Turn the source material into an original story of 220-400 words in 4-6 short paragraphs. This length and paragraph structure are required. Open with a strong, informative lead. Explain what happened, why it matters, how the technology works in plain language, the practical consequences, and any important limitation. When the source is brief, develop the explanation by connecting the facts already present and clearly describing their stated consequences; never add outside facts. Use varied sentences and a confident magazine voice, but keep the writing clear, natural, and easy to follow. Do not use jargon when ordinary words work. Never invent facts, quotes, dates, numbers, reactions, or motives that are absent from the source. Do not mention these instructions.
 Also, suggest 1-3 relevant tags (e.g., "RAG", "reinforcement learning", "OpenAI"), a domain (choose from: ${domainList.join(', ')}), and a severity level (normal, notable, major).
 
 Format your response strictly as JSON with key names "crux", "tags", "domain", and "severity":
@@ -146,32 +117,30 @@ ${content}`;
       }
     ],
     generationConfig: {
-      temperature: 0.2,
-      maxOutputTokens: 1000,
+      temperature: 0.55,
+      maxOutputTokens: 4096,
       responseMimeType: "application/json"
     }
   };
 
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) {
-      const errorBody = await res.text();
-      console.error('Gemini API HTTP Error:', res.status, errorBody);
-      throw new Error(`Gemini API returned status ${res.status}: ${errorBody}`);
-    }
+  let res: Response | null = null;
+  let modelUsed = model;
+  let lastError = '';
+  for (const candidateModel of Array.from(new Set([model, fallbackModel].filter(Boolean)))) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidateModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const attempt = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (attempt.ok) { res = attempt; modelUsed = candidateModel; break; }
+    lastError = `Gemini ${candidateModel} returned HTTP ${attempt.status}: ${(await attempt.text()).slice(0, 300)}`;
+  }
+  if (!res) throw new Error(lastError || 'Gemini drafting failed.');
 
     const data = await res.json();
     const textOutput = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     
     const usageMetadata = data.usageMetadata || {};
-    const promptTokens = usageMetadata.promptTokenCount || 0;
-    const candidateTokens = usageMetadata.candidatesTokenCount || 0;
-    const totalTokens = usageMetadata.totalTokenCount || (promptTokens + candidateTokens);
+    let promptTokens = usageMetadata.promptTokenCount || 0;
+    let candidateTokens = usageMetadata.candidatesTokenCount || 0;
+    let totalTokens = usageMetadata.totalTokenCount || (promptTokens + candidateTokens);
 
     let draft: DraftStoryResult;
     try {
@@ -182,24 +151,40 @@ ${content}`;
       throw new Error('Gemini response was not valid JSON');
     }
 
-    // Save to ResponseCache
-    try {
-      await prisma.responseCache.upsert({
+    let wordCount = draft.crux?.trim().split(/\s+/).length || 0;
+    if (wordCount < 180) {
+      const expansionPrompt = `Rewrite the JSON draft below so the crux is 220-400 words in 4-6 short paragraphs. Keep its facts and classification, improve the lead and flow, explain the consequences in plain language, and do not introduce any fact absent from the source. Return JSON only with crux, tags, domain, and severity.\n\nSOURCE\n${content}\n\nCURRENT DRAFT\n${JSON.stringify(draft)}`;
+      const retryUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelUsed)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const retry = await fetch(retryUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: expansionPrompt }] }], generationConfig: { temperature: 0.45, maxOutputTokens: 4096, responseMimeType: 'application/json' } }) });
+      if (!retry.ok) throw new Error(`Gemini expansion returned HTTP ${retry.status}: ${(await retry.text()).slice(0, 300)}`);
+      const retryData = await retry.json();
+      const retryText = retryData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      try { draft = JSON.parse(retryText.match(/\{[\s\S]*\}/)?.[0] || retryText); }
+      catch { throw new Error('Gemini expansion was not valid JSON.'); }
+      const retryUsage = retryData.usageMetadata || {};
+      promptTokens += retryUsage.promptTokenCount || 0;
+      candidateTokens += retryUsage.candidatesTokenCount || 0;
+      totalTokens += retryUsage.totalTokenCount || ((retryUsage.promptTokenCount || 0) + (retryUsage.candidatesTokenCount || 0));
+      wordCount = draft.crux?.trim().split(/\s+/).length || 0;
+    }
+    if (wordCount < 180 || wordCount > 650) {
+      throw new Error(`Gemini returned ${wordCount} words; the required range is 180-650. Please retry the draft.`);
+    }
+    if (!domainList.includes(draft.domain)) draft.domain = domainHint || 'Research';
+    if (!['normal', 'notable', 'major'].includes(draft.severity)) draft.severity = 'normal';
+    if (!Array.isArray(draft.tags)) draft.tags = ['Technology'];
+    const finalDomain = draft.domain || domainHint || 'Research';
+
+    await prisma.$transaction([
+      prisma.responseCache.upsert({
         where: { contentHash },
         update: { draftJson: JSON.stringify(draft) },
         create: { contentHash, draftJson: JSON.stringify(draft) }
-      });
-    } catch (cacheErr) {
-      console.error('Failed to store response cache:', cacheErr);
-    }
-
-    // Persist TokenUsage with domain
-    const finalDomain = draft.domain || domainHint || 'LLMs';
-    try {
-      await prisma.tokenUsage.create({
+      }),
+      prisma.tokenUsage.create({
         data: {
           provider: 'google',
-          modelName: model,
+          modelName: modelUsed,
           promptTokens,
           candidateTokens,
           totalTokens,
@@ -207,10 +192,8 @@ ${content}`;
           domain: finalDomain,
           isCacheHit: false
         }
-      });
-    } catch (dbErr) {
-      console.error('Failed to log token usage:', dbErr);
-    }
+      })
+    ]);
 
     return {
       draft,
@@ -218,32 +201,10 @@ ${content}`;
         promptTokens,
         candidateTokens,
         totalTokens,
-        modelName: model,
+        modelName: modelUsed,
         isCacheHit: false
       }
     };
-  } catch (apiError) {
-    console.warn('Gemini API request failed. Falling back to heuristic drafting:', apiError);
-
-    const cruxText = content.length > 600 ? content.slice(0, 600) + '...' : content;
-    const fallbackDraft: DraftStoryResult = {
-      crux: cruxText,
-      tags: ["Tech", "Engineering"],
-      domain: domainHint || "LLMs",
-      severity: "normal"
-    };
-
-    return {
-      draft: fallbackDraft,
-      usage: {
-        promptTokens: 0,
-        candidateTokens: 0,
-        totalTokens: 0,
-        modelName: 'fallback-drafter',
-        isCacheHit: false
-      }
-    };
-  }
 }
 
 export async function getTokenUsageStats() {

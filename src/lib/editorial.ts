@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import domains from '@/lib/domains.json';
+import type { DraftStoryResult } from '@/lib/gemini';
 
 const DOMAINS = domains.map(domain => domain.id);
 
@@ -69,5 +70,43 @@ export async function approveCandidate(db: PrismaClient, input: unknown) {
       },
       include: { tags: true },
     });
+  });
+}
+
+export async function addDraftedCandidatesToIssue(db: PrismaClient, candidateIds: string[], issueId: string) {
+  const ids = Array.from(new Set(candidateIds.map(id => id.trim()).filter(Boolean)));
+  if (!issueId.trim()) throw new EditorialError('Choose an issue.', 400);
+  if (!ids.length || ids.length > 30) throw new EditorialError('Select between 1 and 30 drafted stories.', 400);
+
+  return db.$transaction(async tx => {
+    const issue = await tx.issue.findUnique({ where: { id: issueId } });
+    if (!issue) throw new EditorialError('Choose an existing issue.', 400);
+    const candidates = await tx.ingestedCandidate.findMany({ where: { id: { in: ids } } });
+    if (candidates.length !== ids.length) throw new EditorialError('One or more selected candidates no longer exist.', 404);
+    if (candidates.some(candidate => candidate.status !== 'drafted' || !candidate.draftJson)) {
+      throw new EditorialError('Every selected story must have a completed draft.', 409);
+    }
+
+    const stories = [];
+    for (const candidate of candidates) {
+      let draft: DraftStoryResult;
+      try { draft = JSON.parse(candidate.draftJson!) as DraftStoryResult; }
+      catch { throw new EditorialError(`The draft for "${candidate.rawTitle}" is invalid.`, 400); }
+      if (!draft.crux?.trim()) throw new EditorialError(`The draft for "${candidate.rawTitle}" is empty.`, 400);
+      const domain = DOMAINS.includes(draft.domain) ? draft.domain : candidate.suggestedDomain || 'Research';
+      const severity = ['normal', 'notable', 'major'].includes(draft.severity) ? draft.severity : 'normal';
+      const tags = Array.from(new Set((draft.tags || []).map(tag => tag.trim()).filter(Boolean))).slice(0, 8);
+      stories.push(await tx.story.create({
+        data: {
+          title: candidate.rawTitle.trim(), crux: draft.crux.trim(), domain, severity,
+          issueId, sourceUrl: candidate.sourceUrl, publishedAt: new Date(), verificationStatus: 'editor-reviewed',
+          tags: { connectOrCreate: tags.map(name => ({ where: { name }, create: { name } })) },
+        },
+        include: { tags: true },
+      }));
+    }
+    const claimed = await tx.ingestedCandidate.updateMany({ where: { id: { in: ids }, status: 'drafted' }, data: { status: 'published' } });
+    if (claimed.count !== ids.length) throw new EditorialError('A selected candidate changed during publication. Refresh and retry.', 409);
+    return stories;
   });
 }

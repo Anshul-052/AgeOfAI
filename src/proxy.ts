@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ADMIN_SESSION_COOKIE, adminSessionMatches, credentialsMatch, readAdminCredential } from '@/lib/adminAuth';
+import { createServerClient } from '@supabase/ssr';
+import { getSupabasePublicConfig } from '@/lib/supabase/config';
 
 function isProtectedRequest(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -16,7 +18,33 @@ function isProtectedRequest(request: NextRequest) {
 }
 
 export async function proxy(request: NextRequest) {
-  if (!isProtectedRequest(request)) return NextResponse.next();
+  if (!isProtectedRequest(request)) {
+    const path = request.nextUrl.pathname;
+    const isPublicAuthPath = path === '/login' || path.startsWith('/auth/');
+    const isReaderPage = (request.method === 'GET' || request.method === 'HEAD') && !path.startsWith('/api/');
+    const config = getSupabasePublicConfig();
+    if (!config || !isReaderPage || isPublicAuthPath) return NextResponse.next();
+
+    let response = NextResponse.next({ request });
+    const supabase = createServerClient(config.url, config.key, {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: values => {
+          values.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          values.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        },
+      },
+    });
+    const { data } = await supabase.auth.getClaims();
+    if (!data?.claims) {
+      const login = new URL('/login', request.url);
+      login.searchParams.set('next', path);
+      return NextResponse.redirect(login);
+    }
+    if (path === '/login') return NextResponse.redirect(new URL('/', request.url));
+    return response;
+  }
 
   const expected = process.env.ADMIN_ACCESS_KEY;
   if (!expected) {
@@ -35,11 +63,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/admin/:path*',
-    '/api/admin/:path*',
-    '/api/ai-draft',
-    '/api/issues/:path*',
-    '/api/stories/:path*'
-  ]
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons/|social/).*)']
 };

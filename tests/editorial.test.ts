@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import type { PrismaClient } from '@prisma/client';
 import { PrismaClient as TestPrismaClient } from '../generated/prisma-test';
 import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
-import { approveCandidate, EditorialError, publishIssue } from '../src/lib/editorial';
+import { addDraftedCandidatesToIssue, approveCandidate, EditorialError, publishIssue } from '../src/lib/editorial';
 
 test('publication attaches to the chosen issue, rejects repeats, and preserves failed candidates', async () => {
   const db = new TestPrismaClient({ adapter: new PrismaBetterSqlite3({ url: ':memory:' }) });
@@ -34,6 +34,24 @@ test('publication attaches to the chosen issue, rejects repeats, and preserves f
     await db.$executeRawUnsafe(`CREATE TRIGGER reject_story BEFORE INSERT ON Story BEGIN SELECT RAISE(ABORT, 'simulated write failure'); END`);
     await assert.rejects(approveCandidate(editorialDb, input));
     assert.equal((await db.ingestedCandidate.findUniqueOrThrow({ where: { id: candidate.id } })).status, 'drafted');
+  } finally { await db.$disconnect(); }
+});
+
+test('selected completed drafts are added to an issue in one transaction', async () => {
+  const db = new TestPrismaClient({ adapter: new PrismaBetterSqlite3({ url: ':memory:' }) });
+  try {
+    const sql = readFileSync('prisma/test-schema.sql', 'utf8');
+    for (const statement of sql.split(';').map(s => s.trim()).filter(Boolean)) await db.$executeRawUnsafe(statement);
+    const issue = await db.issue.create({ data: { volume: 'Test', issueNumber: 3, publishedAt: new Date(), isPublished: false } });
+    const draftJson = JSON.stringify({ crux: 'A complete and reviewed report.', tags: ['Systems'], domain: 'Research', severity: 'notable' });
+    const first = await db.ingestedCandidate.create({ data: { rawTitle: 'First report', rawContent: 'Source one', source: 'test', sourceUrl: 'https://example.com/first', contentHash: 'first', status: 'drafted', draftJson } });
+    const second = await db.ingestedCandidate.create({ data: { rawTitle: 'Second report', rawContent: 'Source two', source: 'test', sourceUrl: 'https://example.com/second', contentHash: 'second', status: 'drafted', draftJson } });
+    const editorialDb = db as unknown as PrismaClient;
+    const stories = await addDraftedCandidatesToIssue(editorialDb, [first.id, second.id], issue.id);
+    assert.equal(stories.length, 2);
+    assert.equal(await db.story.count({ where: { issueId: issue.id } }), 2);
+    assert.equal(await db.ingestedCandidate.count({ where: { status: 'published' } }), 2);
+    await assert.rejects(addDraftedCandidatesToIssue(editorialDb, [first.id], issue.id), (error: unknown) => error instanceof EditorialError && error.status === 409);
   } finally { await db.$disconnect(); }
 });
 

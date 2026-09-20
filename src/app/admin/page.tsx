@@ -8,6 +8,7 @@ import IssuePublicationButton from "./IssuePublicationButton";
 export default async function AdminPage() {
   let issues: Issue[] = [];
   let stories: Story[] = [];
+  let registeredUserCount: number | null = null;
   let tokenStats = {
     promptTokens: 0,
     candidateTokens: 0,
@@ -27,6 +28,12 @@ export default async function AdminPage() {
     tokenStats = await getTokenUsageStats();
   } catch (err) {
     console.error("Admin Dashboard fetch error:", err);
+  }
+  try {
+    const rows = await prisma.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint AS count FROM auth.users`;
+    registeredUserCount = Number(rows[0]?.count || 0);
+  } catch (err) {
+    console.error("Registered reader count unavailable:", err);
   }
 
   return (
@@ -68,7 +75,11 @@ export default async function AdminPage() {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 text-center">
+          <div className="p-3 bg-background border border-outline-variant rounded">
+            <span className="text-[10px] uppercase text-on-surface-variant block font-label-caps">Registered Readers</span>
+            <span className="text-xl font-bold font-mono">{registeredUserCount ?? 'Unavailable'}</span>
+          </div>
           <div className="p-3 bg-background border border-outline-variant rounded">
             <span className="text-[10px] uppercase text-on-surface-variant block font-label-caps">Total Requests</span>
             <span className="text-xl font-bold font-mono">{tokenStats.requestCount}</span>

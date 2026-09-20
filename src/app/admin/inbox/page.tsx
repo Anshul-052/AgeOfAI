@@ -22,6 +22,8 @@ export default function AdminInboxPage() {
   const [loading, setLoading] = useState(true);
   const [ingesting, setIngesting] = useState(false);
   const [draftingId, setDraftingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batching, setBatching] = useState(false);
   const [cacheNotice, setCacheNotice] = useState<{ [id: string]: boolean }>({});
   const [reviewingCandidate, setReviewingCandidate] = useState<Candidate | null>(null);
   const [reviewForm, setReviewForm] = useState({
@@ -103,6 +105,34 @@ export default function AdminInboxPage() {
     }
   };
 
+  const runBatch = async (action: 'draft' | 'add-to-issue') => {
+    const eligible = selectedIds.filter(id => candidates.some(candidate => candidate.id === id && candidate.status === (action === 'draft' ? 'pending' : 'drafted')));
+    if (!eligible.length) {
+      setError(action === 'draft' ? 'Select at least one pending story.' : 'Select at least one drafted story.');
+      return;
+    }
+    if (action === 'add-to-issue' && !issueId) {
+      setError('Choose the draft issue that should receive these stories.');
+      return;
+    }
+    setBatching(true);
+    setError('');
+    try {
+      const response = await fetch('/api/admin/inbox/batch', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, candidateIds: eligible, issueId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Batch action failed.');
+      if (action === 'add-to-issue') setSelectedIds(current => current.filter(id => !eligible.includes(id)));
+      await fetchCandidates();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Batch action failed.');
+    } finally {
+      setBatching(false);
+    }
+  };
+
   const openReviewModal = (candidate: Candidate) => {
     let parsedDraft = { crux: candidate.rawContent, domain: candidate.suggestedDomain || 'Research', severity: 'normal', tags: ['AI'] };
     if (candidate.draftJson) {
@@ -159,7 +189,7 @@ export default function AdminInboxPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-outline-variant pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <Link href="/admin" className="text-xs uppercase font-label-caps text-on-surface-variant hover:underline">← Admin Dashboard</Link>
+            <Link href="/admin" className="text-xs uppercase font-label-caps text-on-surface-variant hover:underline">Admin Dashboard</Link>
           </div>
           <h1 className="font-headline-xl text-headline-xl uppercase mt-1">Multi-Source Ingestion Inbox</h1>
           <p className="text-sm text-on-surface-variant">Automated candidate news stream from arXiv, HuggingFace, and GitHub AI.</p>
@@ -178,6 +208,33 @@ export default function AdminInboxPage() {
         <div className="bg-red-500/10 border border-red-500 text-red-700 dark:text-red-300 p-4 mb-6 rounded">
           {error}
         </div>
+      )}
+
+      {!loading && candidates.length > 0 && (
+        <section className="mb-6 border border-primary/30 bg-surface-variant/20 rounded-lg p-4">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+            <div>
+              <p className="font-bold">Batch editorial desk</p>
+              <p className="text-xs text-on-surface-variant mt-1">Select story checkboxes, draft pending items together, then add reviewed drafts to a private issue. The issue still requires your final publish approval.</p>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-xs font-label-caps uppercase">
+                Destination issue
+                <select value={issueId} onChange={event => setIssueId(event.target.value)} className="block mt-1 border border-outline bg-background px-2 py-1.5 normal-case">
+                  <option value="">Choose issue</option>
+                  {issues.map(issue => <option key={issue.id} value={issue.id}>{issue.volume} Issue {issue.issueNumber} ({issue.isPublished ? 'published' : 'draft'})</option>)}
+                </select>
+              </label>
+              <button disabled={batching} onClick={() => runBatch('draft')} className="bg-primary text-on-primary px-3 py-2 text-xs font-bold disabled:opacity-50">Draft selected pending</button>
+              <button disabled={batching} onClick={() => runBatch('add-to-issue')} className="bg-emerald-700 text-white px-3 py-2 text-xs font-bold disabled:opacity-50">Add selected drafts</button>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center gap-3 text-xs">
+            <button type="button" className="underline" onClick={() => setSelectedIds(candidates.filter(candidate => candidate.status !== 'published').map(candidate => candidate.id))}>Select all available</button>
+            <button type="button" className="underline" onClick={() => setSelectedIds([])}>Clear selection</button>
+            <span>{selectedIds.length} selected</span>
+          </div>
+        </section>
       )}
 
       {loading ? (
@@ -206,6 +263,12 @@ export default function AdminInboxPage() {
                   : 'border-outline-variant bg-surface-variant/20'
               }`}
             >
+              {item.status !== 'published' && (
+                <label className="mb-3 inline-flex items-center gap-2 text-xs font-bold">
+                  <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={event => setSelectedIds(current => event.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} />
+                  Select for batch action
+                </label>
+              )}
               <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded font-bold ${
@@ -273,7 +336,7 @@ export default function AdminInboxPage() {
                     onClick={() => openReviewModal(item)}
                     className="bg-emerald-600 text-white text-xs font-label-caps uppercase px-3 py-1.5 hover:bg-emerald-700"
                   >
-                    Review & Approve Story →
+                    Review and add story
                   </button>
                 )}
 
