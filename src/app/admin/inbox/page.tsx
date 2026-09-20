@@ -128,6 +128,7 @@ export default function AdminInboxPage() {
       await fetchCandidates();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Batch action failed.');
+      await fetchCandidates();
     } finally {
       setBatching(false);
     }

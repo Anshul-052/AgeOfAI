@@ -17,8 +17,10 @@ export async function POST(request: Request) {
     }
 
     if (action === 'draft') {
-      const candidates = await prisma.ingestedCandidate.findMany({ where: { id: { in: candidateIds }, status: 'pending' } });
-      if (candidates.length !== candidateIds.length) return NextResponse.json({ error: 'Every selected story must still be pending.' }, { status: 409 });
+      const selected = await prisma.ingestedCandidate.findMany({ where: { id: { in: candidateIds } } });
+      if (selected.length !== candidateIds.length) return NextResponse.json({ error: 'One or more selected stories no longer exist. Refresh the inbox.' }, { status: 404 });
+      const candidates = selected.filter(candidate => candidate.status === 'pending');
+      if (!candidates.length) return NextResponse.json({ error: 'The selected stories are already drafted. Use Add selected drafts instead.' }, { status: 409 });
       const results = [];
       for (const candidate of candidates) {
         const source = await buildDraftingSource(candidate.rawTitle, candidate.rawContent, candidate.sourceUrl);
@@ -30,7 +32,7 @@ export async function POST(request: Request) {
         if (updated.count !== 1) throw new EditorialError(`"${candidate.rawTitle}" changed while drafting.`, 409);
         results.push({ candidateId: candidate.id, usage });
       }
-      return NextResponse.json({ drafted: results.length, results });
+      return NextResponse.json({ drafted: results.length, skipped: selected.length - candidates.length, results });
     }
 
     if (action === 'add-to-issue') {
