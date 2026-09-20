@@ -167,8 +167,8 @@ ${content}`;
       totalTokens += retryUsage.totalTokenCount || ((retryUsage.promptTokenCount || 0) + (retryUsage.candidatesTokenCount || 0));
       wordCount = draft.crux?.trim().split(/\s+/).length || 0;
     }
-    if (wordCount < 180 || wordCount > 650) {
-      throw new Error(`Gemini returned ${wordCount} words; the required range is 180-650. Please retry the draft.`);
+    if (wordCount < 140 || wordCount > 650) {
+      throw new Error(`Gemini returned ${wordCount} words; the safe range is 140-650. The source may not contain enough verified detail for a longer story.`);
     }
     if (!domainList.includes(draft.domain)) draft.domain = domainHint || 'Research';
     if (!['normal', 'notable', 'major'].includes(draft.severity)) draft.severity = 'normal';
