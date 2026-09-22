@@ -29,7 +29,17 @@ export async function POST(request: Request) {
       where: { id: candidateId, status: 'pending' },
       data: {
         status: 'drafted',
-        draftJson: JSON.stringify(draft)
+        draftJson: JSON.stringify(draft),
+        draftProvider: 'google',
+        draftModel: usage.modelName,
+        draftRoute: 'cloud-gemini',
+        draftReason: 'Gemini selected for an immediate server draft.',
+        draftRequestedAt: new Date(),
+        draftStartedAt: new Date(),
+        draftCompletedAt: new Date(),
+        draftError: null,
+        draftMetricsJson: JSON.stringify({ ...usage, wordCount: draft.crux.trim().split(/\s+/).length }),
+        draftAttempts: { increment: 1 },
       }
     });
 

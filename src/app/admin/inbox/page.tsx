@@ -15,16 +15,23 @@ interface Candidate {
   draftJson: string | null;
   createdAt: string;
   suggestedDomain?: string;
+  draftProvider?: string | null;
+  draftModel?: string | null;
+  draftRoute?: string | null;
+  draftReason?: string | null;
+  draftMetricsJson?: string | null;
+  draftError?: string | null;
+  draftAttempts?: number;
 }
 
 export default function AdminInboxPage() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [ingesting, setIngesting] = useState(false);
-  const [draftingId, setDraftingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [batching, setBatching] = useState(false);
-  const [cacheNotice, setCacheNotice] = useState<{ [id: string]: boolean }>({});
+  const [modelPreference, setModelPreference] = useState<'auto' | 'qwen' | 'phi' | 'gemini'>('auto');
+  const [notice, setNotice] = useState('');
   const [reviewingCandidate, setReviewingCandidate] = useState<Candidate | null>(null);
   const [reviewForm, setReviewForm] = useState({
     title: '',
@@ -67,6 +74,12 @@ export default function AdminInboxPage() {
     }).catch(() => setError('Failed to load issues. Please refresh before approving a story.'));
   }, []);
 
+  useEffect(() => {
+    if (!candidates.some(candidate => candidate.status === 'queued' || candidate.status === 'drafting')) return;
+    const timer = window.setInterval(fetchCandidates, 8000);
+    return () => window.clearInterval(timer);
+  }, [candidates]);
+
   const handleRunIngestion = async () => {
     setIngesting(true);
     setError('');
@@ -81,34 +94,10 @@ export default function AdminInboxPage() {
     }
   };
 
-  const handleDraft = async (id: string) => {
-    setDraftingId(id);
-    setError('');
-    try {
-      const res = await fetch('/api/admin/inbox/draft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidateId: id })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Drafting failed.');
-
-      if (data.isCacheHit) {
-        setCacheNotice(prev => ({ ...prev, [id]: true }));
-      }
-
-      await fetchCandidates();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Drafting failed');
-    } finally {
-      setDraftingId(null);
-    }
-  };
-
-  const runBatch = async (action: 'draft' | 'add-to-issue') => {
-    const eligible = selectedIds.filter(id => candidates.some(candidate => candidate.id === id && candidate.status === (action === 'draft' ? 'pending' : 'drafted')));
+  const runBatch = async (action: 'queue-draft' | 'add-to-issue') => {
+    const eligible = selectedIds.filter(id => candidates.some(candidate => candidate.id === id && (action === 'queue-draft' ? ['pending', 'failed'].includes(candidate.status) : candidate.status === 'drafted')));
     if (!eligible.length) {
-      setError(action === 'draft' ? 'Select at least one pending story.' : 'Select at least one drafted story.');
+      setError(action === 'queue-draft' ? 'Select at least one pending or failed story.' : 'Select at least one drafted story.');
       return;
     }
     if (action === 'add-to-issue' && !issueId) {
@@ -117,14 +106,18 @@ export default function AdminInboxPage() {
     }
     setBatching(true);
     setError('');
+    setNotice('');
     try {
       const response = await fetch('/api/admin/inbox/batch', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, candidateIds: eligible, issueId }),
+        body: JSON.stringify({ action, candidateIds: eligible, issueId, modelPreference }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Batch action failed.');
-      if (action === 'add-to-issue') setSelectedIds(current => current.filter(id => !eligible.includes(id)));
+      setSelectedIds(current => current.filter(id => !eligible.includes(id)));
+      setNotice(action === 'queue-draft'
+        ? `${result.queued} ${result.queued === 1 ? 'story' : 'stories'} queued. Keep the local editor running to draft them.`
+        : `${result.added} ${result.added === 1 ? 'story' : 'stories'} added to the issue for final review.`);
       await fetchCandidates();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Batch action failed.');
@@ -210,13 +203,14 @@ export default function AdminInboxPage() {
           {error}
         </div>
       )}
+      {notice && <div className="bg-emerald-500/10 border border-emerald-600 text-emerald-800 dark:text-emerald-200 p-4 mb-6 rounded">{notice}</div>}
 
       {!loading && candidates.length > 0 && (
         <section className="mb-6 border border-primary/30 bg-surface-variant/20 rounded-lg p-4">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
             <div>
               <p className="font-bold">Batch editorial desk</p>
-              <p className="text-xs text-on-surface-variant mt-1">Select story checkboxes, draft pending items together, then add reviewed drafts to a private issue. The issue still requires your final publish approval.</p>
+              <p className="text-xs text-on-surface-variant mt-1">Queue each selected story as its own job. Your laptop drafts them one by one, and every completed story still needs your review before it enters a private issue.</p>
             </div>
             <div className="flex flex-wrap items-end gap-2">
               <label className="text-xs font-label-caps uppercase">
@@ -226,12 +220,21 @@ export default function AdminInboxPage() {
                   {issues.map(issue => <option key={issue.id} value={issue.id}>{issue.volume} Issue {issue.issueNumber} ({issue.isPublished ? 'published' : 'draft'})</option>)}
                 </select>
               </label>
-              <button disabled={batching} onClick={() => runBatch('draft')} className="bg-primary text-on-primary px-3 py-2 text-xs font-bold disabled:opacity-50">Draft selected pending</button>
+              <label className="text-xs font-label-caps uppercase">
+                Drafting model
+                <select value={modelPreference} onChange={event => setModelPreference(event.target.value as typeof modelPreference)} className="block mt-1 border border-outline bg-background px-2 py-1.5 normal-case">
+                  <option value="auto">Automatic (recommended)</option>
+                  <option value="qwen">Local Qwen 3.5 4B</option>
+                  <option value="phi">Local Phi-4 Mini</option>
+                  <option value="gemini">Cloud Gemini</option>
+                </select>
+              </label>
+              <button disabled={batching} onClick={() => runBatch('queue-draft')} className="bg-primary text-on-primary px-3 py-2 text-xs font-bold disabled:opacity-50">Queue selected drafts</button>
               <button disabled={batching} onClick={() => runBatch('add-to-issue')} className="bg-emerald-700 text-white px-3 py-2 text-xs font-bold disabled:opacity-50">Add selected drafts</button>
             </div>
           </div>
           <div className="mt-3 flex items-center gap-3 text-xs">
-            <button type="button" className="underline" onClick={() => setSelectedIds(candidates.filter(candidate => candidate.status !== 'published').map(candidate => candidate.id))}>Select all available</button>
+            <button type="button" className="underline" onClick={() => setSelectedIds(candidates.filter(candidate => ['pending', 'failed'].includes(candidate.status)).map(candidate => candidate.id))}>Select all draftable</button>
             <button type="button" className="underline" onClick={() => setSelectedIds([])}>Clear selection</button>
             <span>{selectedIds.length} selected</span>
           </div>
@@ -261,10 +264,14 @@ export default function AdminInboxPage() {
                   ? 'border-emerald-500/30 bg-emerald-500/5'
                   : item.status === 'drafted'
                   ? 'border-blue-500/40 bg-blue-500/5'
+                  : item.status === 'failed'
+                  ? 'border-red-500/40 bg-red-500/5'
+                  : item.status === 'queued' || item.status === 'drafting'
+                  ? 'border-amber-500/40 bg-amber-500/5'
                   : 'border-outline-variant bg-surface-variant/20'
               }`}
             >
-              {item.status !== 'published' && (
+              {['pending', 'failed', 'drafted'].includes(item.status) && (
                 <label className="mb-3 inline-flex items-center gap-2 text-xs font-bold">
                   <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={event => setSelectedIds(current => event.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} />
                   Select for batch action
@@ -297,14 +304,12 @@ export default function AdminInboxPage() {
                       Suggested: {item.suggestedDomain}
                     </span>
                   )}
-                  {cacheNotice[item.id] && (
-                    <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">
-                      Cache Hit (0 Tokens)
-                    </span>
-                  )}
+                  {item.draftModel && <span className="text-[10px] font-mono bg-violet-500/10 text-violet-700 dark:text-violet-300 px-2 py-0.5 rounded">{item.draftProvider}: {item.draftModel}</span>}
                   <span className={`text-[10px] font-label-caps uppercase px-2 py-0.5 rounded ${
                     item.status === 'published' ? 'bg-emerald-600 text-white' :
-                    item.status === 'drafted' ? 'bg-blue-600 text-white' : 'bg-outline-variant text-on-surface'
+                    item.status === 'drafted' ? 'bg-blue-600 text-white' :
+                    item.status === 'failed' ? 'bg-red-700 text-white' :
+                    item.status === 'queued' || item.status === 'drafting' ? 'bg-amber-600 text-white' : 'bg-outline-variant text-on-surface'
                   }`}>
                     {item.status}
                   </span>
@@ -321,16 +326,19 @@ export default function AdminInboxPage() {
                 {item.rawContent}
               </p>
 
+              {item.draftReason && <p className="text-xs text-on-surface-variant mb-2"><strong>Route:</strong> {item.draftReason}</p>}
+              {item.draftMetricsJson && (() => {
+                try {
+                  const metrics = JSON.parse(item.draftMetricsJson) as { wordCount?: number; totalTokens?: number; fallbackUsed?: boolean };
+                  return <p className="text-xs text-on-surface-variant mb-2">{metrics.wordCount || 0} words · {metrics.totalTokens || 0} model tokens{metrics.fallbackUsed ? ' · fallback model used' : ''}</p>;
+                } catch { return null; }
+              })()}
+              {item.draftError && <p className="text-xs text-red-700 dark:text-red-300 mb-2"><strong>Draft failed:</strong> {item.draftError}</p>}
+
               <div className="flex flex-wrap gap-2 pt-2 border-t border-outline-variant/40">
-                {item.status === 'pending' && (
-                  <button
-                    onClick={() => handleDraft(item.id)}
-                    disabled={draftingId === item.id}
-                    className="bg-primary text-on-primary text-xs font-label-caps uppercase px-3 py-1.5 hover:opacity-90 disabled:opacity-50"
-                  >
-                    {draftingId === item.id ? "Drafting with Gemini..." : "Draft with Gemini AI"}
-                  </button>
-                )}
+                {(item.status === 'pending' || item.status === 'failed') && <span className="text-xs text-on-surface-variant py-1">Select this story above, then queue it from the batch desk.</span>}
+                {item.status === 'queued' && <span className="text-xs text-amber-700 dark:text-amber-300 py-1">Waiting for the local editor.</span>}
+                {item.status === 'drafting' && <span className="text-xs text-amber-700 dark:text-amber-300 py-1">The local editor is drafting this story.</span>}
 
                 {item.status === 'drafted' && (
                   <button

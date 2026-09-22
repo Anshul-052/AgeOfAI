@@ -7,13 +7,13 @@ datasource db {
 }
 
 model Issue {
-  id               String   @id @default(cuid())
-  editionKey       String?  @unique
+  id               String               @id @default(cuid())
+  editionKey       String?              @unique
   volume           String
   issueNumber      Int
   publishedAt      DateTime
-  isPublished      Boolean  @default(false)
-  layout           String   @default("lead-story-focus") // lead-story-focus, two-column-grid, editorial-and-drama-split
+  isPublished      Boolean              @default(false)
+  layout           String               @default("lead-story-focus") // lead-story-focus, two-column-grid, editorial-and-drama-split
   coverImageUrl    String?
   coverImagePrompt String?
   stories          Story[]
@@ -69,16 +69,26 @@ model TokenUsage {
 }
 
 model IngestedCandidate {
-  id              String   @id @default(cuid())
-  source          String // arxiv, huggingface, github, hackernews, producthunt, gaming-rss, crypto-rss, mobile-rss, hardware-rss
-  rawTitle        String
-  rawContent      String
-  sourceUrl       String
-  contentHash     String   @unique // SHA-256
-  status          String   @default("pending") // pending, drafted, published, rejected
-  draftJson       String?
-  suggestedDomain String?
-  fetchedAt       DateTime @default(now())
+  id               String    @id @default(cuid())
+  source           String // arxiv, huggingface, github, hackernews, producthunt, gaming-rss, crypto-rss, mobile-rss, hardware-rss
+  rawTitle         String
+  rawContent       String
+  sourceUrl        String
+  contentHash      String    @unique // SHA-256
+  status           String    @default("pending") // pending, queued, drafting, drafted, failed, published, rejected
+  draftJson        String?
+  suggestedDomain  String?
+  draftProvider    String?
+  draftModel       String?
+  draftRoute       String?
+  draftReason      String?
+  draftMetricsJson String?
+  draftRequestedAt DateTime?
+  draftStartedAt   DateTime?
+  draftCompletedAt DateTime?
+  draftError       String?
+  draftAttempts    Int       @default(0)
+  fetchedAt        DateTime  @default(now())
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -94,11 +104,11 @@ model ResponseCache {
 }
 
 model Subscriber {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  status       String   @default("active") // active, unsubscribed
-  subscribedAt DateTime @default(now())
-  deliveries  NewsletterDelivery[]
+  id           String               @id @default(cuid())
+  email        String               @unique
+  status       String               @default("active") // active, unsubscribed
+  subscribedAt DateTime             @default(now())
+  deliveries   NewsletterDelivery[]
 }
 
 model NewsletterDelivery {

@@ -1,5 +1,23 @@
 # Autonomous edition editor
 
+## Local per-story drafting
+
+The admin inbox now sends every selected candidate to its own database-backed drafting job. **Automatic** routing uses Qwen 3.5 4B on the editor laptop for ordinary stories and reserves Gemini for sensitive subjects such as cybersecurity, health, finance, crypto, and policy. The model selector can override that choice with Qwen, Phi-4 Mini, or Gemini. If a local draft fails validation, the worker retries it with the other local model. It never publishes a story; the administrator must review it, add it to an issue, and use the final issue publish control.
+
+Install Ollama and both models once:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup-local-editor.ps1
+```
+
+Keep the worker running while drafting from `/admin/inbox`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start-local-editor.ps1
+```
+
+The inbox refreshes queued work automatically. Each card shows the assigned provider and model, routing reason, job state, word count, token count, fallback use, and errors. `npm run editor:local-once` processes one queued story and exits, which is useful for testing. The worker needs the same `DATABASE_URL` as the deployed application because Vercel cannot connect directly to a model running on a private laptop.
+
 `scripts/ai-editor.ts` is the separate editor for AgeOfAI. It is designed for a publication without a daily human editor and uses a fail-closed workflow: weak or unverified stories are withheld instead of being published with a confident-sounding summary.
 
 ## What it does

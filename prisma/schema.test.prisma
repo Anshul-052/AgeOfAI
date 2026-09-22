@@ -8,19 +8,19 @@ datasource db {
 }
 
 model Issue {
-  id               String   @id @default(cuid())
-  editionKey       String?  @unique
+  id               String               @id @default(cuid())
+  editionKey       String?              @unique
   volume           String
   issueNumber      Int
   publishedAt      DateTime
-  isPublished      Boolean  @default(false)
-  layout           String   @default("lead-story-focus")
+  isPublished      Boolean              @default(false)
+  layout           String               @default("lead-story-focus")
   coverImageUrl    String?
   coverImagePrompt String?
   stories          Story[]
   deliveries       NewsletterDelivery[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 }
 
 model Story {
@@ -35,11 +35,11 @@ model Story {
   evidenceJson       String?
   verificationStatus String   @default("legacy")
   publishedAt        DateTime
-  issueId             String?
-  issue               Issue?   @relation(fields: [issueId], references: [id])
-  tags                Tag[]
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  issueId            String?
+  issue              Issue?   @relation(fields: [issueId], references: [id])
+  tags               Tag[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@index([domain])
   @@index([publishedAt])
@@ -67,18 +67,28 @@ model TokenUsage {
 }
 
 model IngestedCandidate {
-  id              String   @id @default(cuid())
-  source          String
-  rawTitle        String
-  rawContent      String
-  sourceUrl       String
-  contentHash     String   @unique
-  status          String   @default("pending")
-  draftJson       String?
-  suggestedDomain String?
-  fetchedAt       DateTime @default(now())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String    @id @default(cuid())
+  source           String
+  rawTitle         String
+  rawContent       String
+  sourceUrl        String
+  contentHash      String    @unique
+  status           String    @default("pending")
+  draftJson        String?
+  suggestedDomain  String?
+  draftProvider    String?
+  draftModel       String?
+  draftRoute       String?
+  draftReason      String?
+  draftMetricsJson String?
+  draftRequestedAt DateTime?
+  draftStartedAt   DateTime?
+  draftCompletedAt DateTime?
+  draftError       String?
+  draftAttempts    Int       @default(0)
+  fetchedAt        DateTime  @default(now())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([status])
 }
@@ -91,11 +101,11 @@ model ResponseCache {
 }
 
 model Subscriber {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  status       String   @default("active")
-  subscribedAt DateTime @default(now())
-  deliveries  NewsletterDelivery[]
+  id           String               @id @default(cuid())
+  email        String               @unique
+  status       String               @default("active")
+  subscribedAt DateTime             @default(now())
+  deliveries   NewsletterDelivery[]
 }
 
 model NewsletterDelivery {

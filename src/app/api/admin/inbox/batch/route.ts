@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/lib/db';
-import { draftStoryWithGemini } from '@/lib/gemini';
 import { addDraftedCandidatesToIssue, EditorialError } from '@/lib/editorial';
-import { buildDraftingSource } from '@/lib/sourceContent';
+import { isDraftPreference, routeDraft } from '@/lib/draftRouting';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as { action?: unknown; candidateIds?: unknown; issueId?: unknown };
+    const body = await request.json() as { action?: unknown; candidateIds?: unknown; issueId?: unknown; modelPreference?: unknown };
     const action = typeof body.action === 'string' ? body.action : '';
     const candidateIds = Array.isArray(body.candidateIds)
       ? Array.from(new Set(body.candidateIds.filter((id): id is string => typeof id === 'string' && Boolean(id.trim()))))
@@ -16,23 +15,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Select between 1 and 30 stories.' }, { status: 400 });
     }
 
-    if (action === 'draft') {
+    if (action === 'queue-draft') {
+      const preference = isDraftPreference(body.modelPreference) ? body.modelPreference : 'auto';
       const selected = await prisma.ingestedCandidate.findMany({ where: { id: { in: candidateIds } } });
       if (selected.length !== candidateIds.length) return NextResponse.json({ error: 'One or more selected stories no longer exist. Refresh the inbox.' }, { status: 404 });
-      const candidates = selected.filter(candidate => candidate.status === 'pending');
-      if (!candidates.length) return NextResponse.json({ error: 'The selected stories are already drafted. Use Add selected drafts instead.' }, { status: 409 });
-      const results = [];
-      for (const candidate of candidates) {
-        const source = await buildDraftingSource(candidate.rawTitle, candidate.rawContent, candidate.sourceUrl);
-        const { draft, usage } = await draftStoryWithGemini(source, candidate.suggestedDomain || undefined);
-        const updated = await prisma.ingestedCandidate.updateMany({
-          where: { id: candidate.id, status: 'pending' },
-          data: { status: 'drafted', draftJson: JSON.stringify(draft) },
-        });
-        if (updated.count !== 1) throw new EditorialError(`"${candidate.rawTitle}" changed while drafting.`, 409);
-        results.push({ candidateId: candidate.id, usage });
-      }
-      return NextResponse.json({ drafted: results.length, skipped: selected.length - candidates.length, results });
+      const candidates = selected.filter(candidate => candidate.status === 'pending' || candidate.status === 'failed');
+      if (!candidates.length) return NextResponse.json({ error: 'Select pending or failed stories to queue.' }, { status: 409 });
+      const requestedAt = new Date();
+      const decisions = candidates.map(candidate => ({ candidate, decision: routeDraft(candidate, preference) }));
+      await prisma.$transaction(decisions.map(({ candidate, decision }) => prisma.ingestedCandidate.update({
+        where: { id: candidate.id },
+        data: {
+          status: 'queued', draftJson: null, draftProvider: decision.provider, draftModel: decision.model,
+          draftRoute: decision.route, draftReason: decision.reason, draftRequestedAt: requestedAt,
+          draftStartedAt: null, draftCompletedAt: null, draftMetricsJson: null, draftError: null,
+        },
+      })));
+      return NextResponse.json({
+        queued: decisions.length,
+        skipped: selected.length - candidates.length,
+        routes: decisions.map(({ candidate, decision }) => ({ candidateId: candidate.id, ...decision })),
+      });
     }
 
     if (action === 'add-to-issue') {

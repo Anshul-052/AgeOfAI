@@ -19,7 +19,9 @@
     "editor:scan": "tsx scripts/ai-editor.ts --scan-only",
     "editor:preview": "tsx scripts/ai-editor.ts --preview",
     "editor:stage": "tsx scripts/ai-editor.ts --stage",
-    "editor:edition": "tsx scripts/ai-editor.ts --stage"
+    "editor:edition": "tsx scripts/ai-editor.ts --stage",
+    "editor:local": "tsx scripts/local-draft-worker.ts",
+    "editor:local-once": "tsx scripts/local-draft-worker.ts --once"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
