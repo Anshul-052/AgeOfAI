@@ -17,10 +17,14 @@ function isProtectedRequest(request: NextRequest) {
   );
 }
 
+export function isAuthenticationPage(path: string) {
+  return path === '/login' || path === '/admin/login' || path.startsWith('/auth/');
+}
+
 export async function proxy(request: NextRequest) {
   if (!isProtectedRequest(request)) {
     const path = request.nextUrl.pathname;
-    const isPublicAuthPath = path === '/login' || path.startsWith('/auth/');
+    const isPublicAuthPath = isAuthenticationPage(path);
     const isReaderPage = (request.method === 'GET' || request.method === 'HEAD') && !path.startsWith('/api/');
     const config = getSupabasePublicConfig();
     if (!config || !isReaderPage || isPublicAuthPath) return NextResponse.next();
