@@ -16,7 +16,7 @@ if (-not $ollamaPath) { throw 'Ollama was installed but is not available yet. Op
 
 try { Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/tags' -TimeoutSec 3 | Out-Null }
 catch {
-  Start-Process -FilePath $ollamaPath -ArgumentList 'serve' -WindowStyle Hidden -Environment @{ OLLAMA_MODELS = $env:OLLAMA_MODELS }
+  Start-Process -FilePath $ollamaPath -ArgumentList 'serve' -WindowStyle Hidden
   Start-Sleep -Seconds 3
 }
 
