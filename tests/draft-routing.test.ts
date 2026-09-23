@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { routeDraft } from '../src/lib/draftRouting';
-import { parseAndValidateDraft, shouldRewriteForTargetLength } from '../src/lib/draftValidation';
+import { parseAndValidateDraft } from '../src/lib/draftValidation';
 
 test('automatic routing keeps ordinary stories on the local primary model', () => {
   const route = routeDraft({ rawTitle: 'A new JavaScript runtime ships', rawContent: 'The release improves package loading.', suggestedDomain: 'Tools' });
@@ -33,13 +33,13 @@ test('draft validation rejects one-line undersized output', () => {
   assert.throws(() => parseAndValidateDraft(JSON.stringify({ crux: 'Too short.', tags: [], domain: 'Tools', severity: 'normal' })), /2 words/);
 });
 
-test('draft validation accepts a 50-word brief in one paragraph', () => {
-  const words = Array.from({ length: 50 }, (_, index) => `word${index}`);
+test('draft validation accepts an 11-word brief in one paragraph', () => {
+  const words = Array.from({ length: 11 }, (_, index) => `word${index}`);
   const crux = words.join(' ');
-  assert.equal(parseAndValidateDraft(JSON.stringify({ crux, tags: ['brief'], domain: 'Tools', severity: 'normal' })).wordCount, 50);
+  assert.equal(parseAndValidateDraft(JSON.stringify({ crux, tags: ['brief'], domain: 'Tools', severity: 'normal' })).wordCount, 11);
 });
 
-test('drafts below 85 words trigger a rewrite without changing the acceptance floor', () => {
-  assert.equal(shouldRewriteForTargetLength(84), true);
-  assert.equal(shouldRewriteForTargetLength(85), false);
+test('draft validation rejects a story of 10 words or fewer', () => {
+  const crux = Array.from({ length: 10 }, (_, index) => `word${index}`).join(' ');
+  assert.throws(() => parseAndValidateDraft(JSON.stringify({ crux, tags: ['brief'], domain: 'Tools', severity: 'normal' })), /more than 10/);
 });
