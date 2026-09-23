@@ -189,6 +189,17 @@ export default function AdminInboxPage() {
     setError('');
   };
 
+  const selectNextThirtyDrafted = () => {
+    setSelectedIds(current => {
+      const currentSet = new Set(current);
+      const drafted = candidates.filter(candidate => candidate.status === 'drafted');
+      const next = drafted.filter(candidate => !currentSet.has(candidate.id)).slice(0, 30);
+      const page = next.length ? next : drafted.slice(0, 30);
+      return page.map(candidate => candidate.id);
+    });
+    setError('');
+  };
+
   const toggleCandidate = (id: string, checked: boolean) => {
     setSelectedIds(current => {
       if (!checked) return current.filter(candidateId => candidateId !== id);
@@ -258,6 +269,7 @@ export default function AdminInboxPage() {
           </div>
           <div className="mt-3 flex items-center gap-3 text-xs">
             <button type="button" className="underline" onClick={selectNextThirtyDraftable}>Select next 30 draftable</button>
+            <button type="button" className="underline" onClick={selectNextThirtyDrafted}>Select next 30 drafted for publishing</button>
             <button type="button" className="underline" onClick={() => setSelectedIds([])}>Clear selection</button>
             <span>{selectedIds.length} selected</span>
           </div>
