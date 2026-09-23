@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { prisma } from '../src/lib/db';
 import { draftStoryWithGemini } from '../src/lib/gemini';
-import { localDraftPrompt, parseAndValidateDraft } from '../src/lib/draftValidation';
+import { LOCAL_DRAFT_TARGET_MIN_WORDS, localDraftPrompt, parseAndValidateDraft, shouldRewriteForTargetLength, type ValidatedDraft } from '../src/lib/draftValidation';
 import { buildDraftingSource } from '../src/lib/sourceContent';
 
 interface OllamaResponse {
@@ -22,13 +22,14 @@ process.on('SIGTERM', () => { stopping = true; });
 
 const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
-async function draftWithOllama(model: string, source: string, domainHint?: string | null) {
+async function draftWithOllama(model: string, source: string, domainHint?: string | null, acceptBelowTarget = false) {
   const startedAt = Date.now();
   let prompt = localDraftPrompt(source);
   let promptTokens = 0;
   let candidateTokens = 0;
   let generationDurationMs = 0;
   let lastError: Error | null = null;
+  let bestValidDraft: ValidatedDraft | null = null;
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     const response = await fetch(`${ollamaBaseUrl}/api/chat`, {
@@ -51,6 +52,12 @@ async function draftWithOllama(model: string, source: string, domainHint?: strin
     generationDurationMs += result.eval_duration ? Math.round(result.eval_duration / 1_000_000) : 0;
     try {
       const validated = parseAndValidateDraft(result.message?.content || '', domainHint);
+      if (shouldRewriteForTargetLength(validated.wordCount)) {
+        if (!bestValidDraft || validated.wordCount > bestValidDraft.wordCount) bestValidDraft = validated;
+        lastError = new Error(`The draft contains ${validated.wordCount} words; the editorial target is at least ${LOCAL_DRAFT_TARGET_MIN_WORDS}.`);
+        prompt = `${localDraftPrompt(source)}\n\nThe previous draft was only ${validated.wordCount} words. Rewrite it as a complete 100-250 word story. Add useful explanation grounded only in the source; do not pad it or invent facts. Return one JSON object without reasoning, markdown, or commentary.`;
+        continue;
+      }
       return {
         ...validated,
         metrics: {
@@ -62,8 +69,20 @@ async function draftWithOllama(model: string, source: string, domainHint?: strin
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      prompt = `${localDraftPrompt(source)}\n\nYour previous attempt failed validation: ${lastError.message} Write at least 50 words in at least 2 short paragraphs and return one complete JSON object. Do not include reasoning, markdown, or commentary.`;
+      prompt = `${localDraftPrompt(source)}\n\nYour previous attempt failed validation: ${lastError.message} Rewrite it as a complete 100-250 word story and return one JSON object. Do not include reasoning, markdown, or commentary.`;
     }
+  }
+  if (acceptBelowTarget && bestValidDraft) {
+    return {
+      ...bestValidDraft,
+      metrics: {
+        promptTokens, candidateTokens, totalTokens: promptTokens + candidateTokens,
+        totalDurationMs: Date.now() - startedAt,
+        generationDurationMs: generationDurationMs || null,
+        rewriteUsed: true,
+        belowTargetAccepted: true,
+      },
+    };
   }
   throw lastError || new Error('The local model did not return a valid draft.');
 }
@@ -105,9 +124,9 @@ async function processCandidate(candidate: NonNullable<Awaited<ReturnType<typeof
 
     const attempts = Array.from(new Set([primaryModel, fallbackModel]));
     let lastError: Error | null = null;
-    for (const model of attempts) {
+    for (const [modelIndex, model] of attempts.entries()) {
       try {
-        const result = await draftWithOllama(model, source, candidate.suggestedDomain);
+        const result = await draftWithOllama(model, source, candidate.suggestedDomain, modelIndex === attempts.length - 1);
         await prisma.$transaction([
           prisma.ingestedCandidate.update({
             where: { id: candidate.id },

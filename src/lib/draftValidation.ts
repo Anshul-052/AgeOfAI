@@ -6,6 +6,12 @@ export interface ValidatedDraft {
   wordCount: number;
 }
 
+export const LOCAL_DRAFT_TARGET_MIN_WORDS = 85;
+
+export function shouldRewriteForTargetLength(wordCount: number) {
+  return wordCount < LOCAL_DRAFT_TARGET_MIN_WORDS;
+}
+
 export function parseAndValidateDraft(output: string, domainHint?: string | null): ValidatedDraft {
   const match = output.match(/\{[\s\S]*\}/);
   let value: unknown;
@@ -22,9 +28,6 @@ export function parseAndValidateDraft(output: string, domainHint?: string | null
   if (wordCount < 50 || wordCount > 650) {
     throw new Error(`The draft contains ${wordCount} words; the accepted range is 50-650.`);
   }
-  const paragraphCount = crux.split(/\n\s*\n/).filter(Boolean).length;
-  if (paragraphCount < 2) throw new Error(`The draft contains ${paragraphCount} paragraph; at least 2 are required.`);
-
   const allowedDomains = domains.map(domain => domain.id);
   const domain = typeof record.domain === 'string' && allowedDomains.includes(record.domain)
     ? record.domain
@@ -41,7 +44,7 @@ export function localDraftPrompt(source: string): string {
   const domainList = domains.map(domain => domain.id).join(', ');
   return `You are an experienced technology journalist writing for AgeOfAI. Write an original, accurate story from only the supplied source material.
 
-Aim for 120-300 words in 2-5 short paragraphs, using only as much length as the source can support. Start with a strong factual lead, explain what happened, how the technology works in plain language, why it matters, its practical consequences, and any limitation stated by the source. Write with a natural magazine voice. Keep it accessible. Never invent facts, quotes, dates, numbers, reactions, or motives. If the source is thin, stay concise rather than padding it with speculation. A valid brief must still contain at least 50 words and 2 paragraphs.
+Write 100-250 words in 1-4 short paragraphs, using only as much length as the source can support. Treat 85 words as the minimum editorial target even when one paragraph is the clearest format. Start with a strong factual lead, explain what happened, how the technology works in plain language, why it matters, its practical consequences, and any limitation stated by the source. Write with a natural magazine voice. Keep it accessible. Never invent facts, quotes, dates, numbers, reactions, or motives. If the source is thin, stay concise rather than padding it with speculation.
 
 Return only valid JSON with keys crux, tags, domain, and severity. tags must contain 1-3 strings. domain must be one of: ${domainList}. severity must be normal, notable, or major.
 

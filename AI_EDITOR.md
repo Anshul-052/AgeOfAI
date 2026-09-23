@@ -18,7 +18,7 @@ powershell -ExecutionPolicy Bypass -File scripts\start-local-editor.ps1
 
 On this Windows machine, double-click `START_LOCAL_EDITOR.cmd` in the project folder for the same result. Keep that window open while queued stories are being drafted.
 
-The inbox refreshes queued work automatically. Each card shows the assigned provider and model, routing reason, job state, word count, token count, fallback use, and errors. Local drafts are accepted from 50-650 words when they contain at least two paragraphs, allowing concise briefs when the verified source is sparse. `npm run editor:local-once` processes one queued story and exits, which is useful for testing. The worker needs the same `DATABASE_URL` as the deployed application because Vercel cannot connect directly to a model running on a private laptop.
+The inbox refreshes queued work automatically. Each card shows the assigned provider and model, routing reason, job state, word count, token count, fallback use, and errors. The local writer targets at least 85 words and automatically rewrites shorter output. A final brief may be accepted from 50-650 words when a sparse verified source cannot safely support 85 words, and one paragraph is allowed. `npm run editor:local-once` processes one queued story and exits, which is useful for testing. The worker needs the same `DATABASE_URL` as the deployed application because Vercel cannot connect directly to a model running on a private laptop.
 
 `scripts/ai-editor.ts` is the separate editor for AgeOfAI. It is designed for a publication without a daily human editor and uses a fail-closed workflow: weak or unverified stories are withheld instead of being published with a confident-sounding summary.
 
