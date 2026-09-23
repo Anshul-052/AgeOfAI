@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import domains from '@/lib/domains.json';
 import type { DraftStoryResult } from '@/lib/gemini';
 
@@ -6,6 +6,25 @@ const DOMAINS = domains.map(domain => domain.id);
 
 export class EditorialError extends Error {
   constructor(message: string, public status: number) { super(message); }
+}
+
+async function createReviewedStory(
+  tx: Prisma.TransactionClient,
+  data: Prisma.StoryUncheckedCreateInput,
+  tagNames: string[],
+) {
+  // Create the story first, then connect tags. This guarantees the story row
+  // exists before Prisma writes to the implicit _StoryToTag relation table.
+  const story = await tx.story.create({ data });
+  const tags = [];
+  for (const name of tagNames) {
+    tags.push(await tx.tag.upsert({ where: { name }, update: {}, create: { name } }));
+  }
+  return tx.story.update({
+    where: { id: story.id },
+    data: tags.length ? { tags: { connect: tags.map(tag => ({ id: tag.id })) } } : {},
+    include: { tags: true },
+  });
 }
 
 export async function publishIssue(db: PrismaClient, issueId: string) {
@@ -62,14 +81,10 @@ export async function approveCandidate(db: PrismaClient, input: unknown) {
       where: { id: candidateId, status: 'drafted' }, data: { status: 'published' },
     });
     if (claimed.count !== 1) throw new EditorialError('This candidate has already been processed.', 409);
-    return tx.story.create({
-      data: {
-        title, crux, domain, severity, issueId, sourceUrl: candidate.sourceUrl,
-        publishedAt: new Date(), verificationStatus: 'editor-reviewed',
-        tags: { connectOrCreate: tags.map(name => ({ where: { name }, create: { name } })) },
-      },
-      include: { tags: true },
-    });
+    return createReviewedStory(tx, {
+      title, crux, domain, severity, issueId, sourceUrl: candidate.sourceUrl,
+      publishedAt: new Date(), verificationStatus: 'editor-reviewed',
+    }, tags);
   });
 }
 
@@ -96,14 +111,10 @@ export async function addDraftedCandidatesToIssue(db: PrismaClient, candidateIds
       const domain = DOMAINS.includes(draft.domain) ? draft.domain : candidate.suggestedDomain || 'Research';
       const severity = ['normal', 'notable', 'major'].includes(draft.severity) ? draft.severity : 'normal';
       const tags = Array.from(new Set((draft.tags || []).map(tag => tag.trim()).filter(Boolean))).slice(0, 8);
-      stories.push(await tx.story.create({
-        data: {
-          title: candidate.rawTitle.trim(), crux: draft.crux.trim(), domain, severity,
-          issueId, sourceUrl: candidate.sourceUrl, publishedAt: new Date(), verificationStatus: 'editor-reviewed',
-          tags: { connectOrCreate: tags.map(name => ({ where: { name }, create: { name } })) },
-        },
-        include: { tags: true },
-      }));
+      stories.push(await createReviewedStory(tx, {
+        title: candidate.rawTitle.trim(), crux: draft.crux.trim(), domain, severity,
+        issueId, sourceUrl: candidate.sourceUrl, publishedAt: new Date(), verificationStatus: 'editor-reviewed',
+      }, tags));
     }
     const claimed = await tx.ingestedCandidate.updateMany({ where: { id: { in: ids }, status: 'drafted' }, data: { status: 'published' } });
     if (claimed.count !== ids.length) throw new EditorialError('A selected candidate changed during publication. Refresh and retry.', 409);

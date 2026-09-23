@@ -178,6 +178,29 @@ export default function AdminInboxPage() {
     }
   };
 
+  const selectNextThirtyDraftable = () => {
+    setSelectedIds(current => {
+      const currentSet = new Set(current);
+      const draftable = candidates.filter(candidate => ['pending', 'failed'].includes(candidate.status));
+      const next = draftable.filter(candidate => !currentSet.has(candidate.id)).slice(0, 30);
+      const page = next.length ? next : draftable.slice(0, 30);
+      return page.map(candidate => candidate.id);
+    });
+    setError('');
+  };
+
+  const toggleCandidate = (id: string, checked: boolean) => {
+    setSelectedIds(current => {
+      if (!checked) return current.filter(candidateId => candidateId !== id);
+      if (current.includes(id)) return current;
+      if (current.length >= 30) {
+        setError('A batch can contain at most 30 stories. Process this batch, then select the next 30.');
+        return current;
+      }
+      return [...current, id];
+    });
+  };
+
   return (
     <main className="max-w-screen-xl mx-auto px-edge-margin py-stack-lg min-h-screen">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-outline-variant pb-4">
@@ -234,7 +257,7 @@ export default function AdminInboxPage() {
             </div>
           </div>
           <div className="mt-3 flex items-center gap-3 text-xs">
-            <button type="button" className="underline" onClick={() => setSelectedIds(candidates.filter(candidate => ['pending', 'failed'].includes(candidate.status)).map(candidate => candidate.id))}>Select all draftable</button>
+            <button type="button" className="underline" onClick={selectNextThirtyDraftable}>Select next 30 draftable</button>
             <button type="button" className="underline" onClick={() => setSelectedIds([])}>Clear selection</button>
             <span>{selectedIds.length} selected</span>
           </div>
@@ -273,7 +296,7 @@ export default function AdminInboxPage() {
             >
               {['pending', 'failed', 'drafted'].includes(item.status) && (
                 <label className="mb-3 inline-flex items-center gap-2 text-xs font-bold">
-                  <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={event => setSelectedIds(current => event.target.checked ? [...current, item.id] : current.filter(id => id !== item.id))} />
+                  <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={event => toggleCandidate(item.id, event.target.checked)} />
                   Select for batch action
                 </label>
               )}
