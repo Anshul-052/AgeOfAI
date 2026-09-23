@@ -32,3 +32,14 @@ test('draft validation normalizes classification but preserves an adequate story
 test('draft validation rejects one-line undersized output', () => {
   assert.throws(() => parseAndValidateDraft(JSON.stringify({ crux: 'Too short.', tags: [], domain: 'Tools', severity: 'normal' })), /2 words/);
 });
+
+test('draft validation accepts a 50-word brief in two paragraphs', () => {
+  const words = Array.from({ length: 50 }, (_, index) => `word${index}`);
+  const crux = `${words.slice(0, 25).join(' ')}\n\n${words.slice(25).join(' ')}`;
+  assert.equal(parseAndValidateDraft(JSON.stringify({ crux, tags: ['brief'], domain: 'Tools', severity: 'normal' })).wordCount, 50);
+});
+
+test('draft validation still rejects a one-paragraph brief', () => {
+  const crux = Array.from({ length: 70 }, (_, index) => `word${index}`).join(' ');
+  assert.throws(() => parseAndValidateDraft(JSON.stringify({ crux, tags: ['brief'], domain: 'Tools', severity: 'normal' })), /at least 2/);
+});

@@ -62,7 +62,7 @@ async function draftWithOllama(model: string, source: string, domainHint?: strin
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      prompt = `${localDraftPrompt(source)}\n\nYour previous attempt failed validation: ${lastError.message} Write 220-400 words in 4-6 paragraphs and return one complete JSON object. Do not include reasoning, markdown, or commentary.`;
+      prompt = `${localDraftPrompt(source)}\n\nYour previous attempt failed validation: ${lastError.message} Write at least 50 words in at least 2 short paragraphs and return one complete JSON object. Do not include reasoning, markdown, or commentary.`;
     }
   }
   throw lastError || new Error('The local model did not return a valid draft.');
