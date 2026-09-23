@@ -4,6 +4,8 @@ import { prisma } from '@/lib/db';
 import { addDraftedCandidatesToIssue, EditorialError } from '@/lib/editorial';
 import { isDraftPreference, routeDraft } from '@/lib/draftRouting';
 
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json() as { action?: unknown; candidateIds?: unknown; issueId?: unknown; modelPreference?: unknown };

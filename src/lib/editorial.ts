@@ -11,20 +11,30 @@ export class EditorialError extends Error {
 async function createReviewedStory(
   tx: Prisma.TransactionClient,
   data: Prisma.StoryUncheckedCreateInput,
-  tagNames: string[],
+  tags: { id: string }[],
 ) {
   // Create the story first, then connect tags. This guarantees the story row
   // exists before Prisma writes to the implicit _StoryToTag relation table.
   const story = await tx.story.create({ data });
-  const tags = [];
-  for (const name of tagNames) {
-    tags.push(await tx.tag.upsert({ where: { name }, update: {}, create: { name } }));
-  }
   return tx.story.update({
     where: { id: story.id },
     data: tags.length ? { tags: { connect: tags.map(tag => ({ id: tag.id })) } } : {},
     include: { tags: true },
   });
+}
+
+async function ensureTags(tx: Prisma.TransactionClient, names: string[]) {
+  const uniqueNames = Array.from(new Set(names));
+  if (!uniqueNames.length) return [];
+
+  const tags = await tx.tag.findMany({ where: { name: { in: uniqueNames } } });
+  const existingNames = new Set(tags.map(tag => tag.name));
+  for (const name of uniqueNames) {
+    if (!existingNames.has(name)) {
+      tags.push(await tx.tag.upsert({ where: { name }, update: {}, create: { name } }));
+    }
+  }
+  return tags;
 }
 
 export async function publishIssue(db: PrismaClient, issueId: string) {
@@ -81,10 +91,11 @@ export async function approveCandidate(db: PrismaClient, input: unknown) {
       where: { id: candidateId, status: 'drafted' }, data: { status: 'published' },
     });
     if (claimed.count !== 1) throw new EditorialError('This candidate has already been processed.', 409);
+    const reviewedTags = await ensureTags(tx, tags);
     return createReviewedStory(tx, {
       title, crux, domain, severity, issueId, sourceUrl: candidate.sourceUrl,
       publishedAt: new Date(), verificationStatus: 'editor-reviewed',
-    }, tags);
+    }, reviewedTags);
   });
 }
 
@@ -102,8 +113,7 @@ export async function addDraftedCandidatesToIssue(db: PrismaClient, candidateIds
       throw new EditorialError('Every selected story must have a completed draft.', 409);
     }
 
-    const stories = [];
-    for (const candidate of candidates) {
+    const reviewedCandidates = candidates.map(candidate => {
       let draft: DraftStoryResult;
       try { draft = JSON.parse(candidate.draftJson!) as DraftStoryResult; }
       catch { throw new EditorialError(`The draft for "${candidate.rawTitle}" is invalid.`, 400); }
@@ -111,13 +121,28 @@ export async function addDraftedCandidatesToIssue(db: PrismaClient, candidateIds
       const domain = DOMAINS.includes(draft.domain) ? draft.domain : candidate.suggestedDomain || 'Research';
       const severity = ['normal', 'notable', 'major'].includes(draft.severity) ? draft.severity : 'normal';
       const tags = Array.from(new Set((draft.tags || []).map(tag => tag.trim()).filter(Boolean))).slice(0, 8);
+      return { candidate, draft, domain, severity, tags };
+    });
+
+    // Resolve shared tags once for the whole batch instead of repeating up to
+    // eight tag queries for every story. This keeps a 30-story transaction short.
+    const allTags = await ensureTags(tx, reviewedCandidates.flatMap(item => item.tags));
+    const tagsByName = new Map(allTags.map(tag => [tag.name, tag]));
+    const stories = [];
+    for (const { candidate, draft, domain, severity, tags } of reviewedCandidates) {
       stories.push(await createReviewedStory(tx, {
         title: candidate.rawTitle.trim(), crux: draft.crux.trim(), domain, severity,
         issueId, sourceUrl: candidate.sourceUrl, publishedAt: new Date(), verificationStatus: 'editor-reviewed',
-      }, tags));
+      }, tags.flatMap(name => {
+        const tag = tagsByName.get(name);
+        return tag ? [tag] : [];
+      })));
     }
     const claimed = await tx.ingestedCandidate.updateMany({ where: { id: { in: ids }, status: 'drafted' }, data: { status: 'published' } });
     if (claimed.count !== ids.length) throw new EditorialError('A selected candidate changed during publication. Refresh and retry.', 409);
     return stories;
+  }, {
+    maxWait: 10_000,
+    timeout: 45_000,
   });
 }
