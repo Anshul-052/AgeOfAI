@@ -1,11 +1,16 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
 
+function requestedDestination() {
+  const requested = new URLSearchParams(window.location.search).get('next') || '/';
+  return requested.startsWith('/') && !requested.startsWith('//') && !requested.startsWith('/login') && !requested.startsWith('/auth/')
+    ? requested
+    : '/';
+}
+
 export default function LoginPage() {
-  const router = useRouter();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,14 +22,19 @@ export default function LoginPage() {
     try {
       const supabase = createSupabaseBrowserClient();
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
+        const destination = requestedDestination();
+        const callback = new URL('/auth/callback', window.location.origin);
+        callback.searchParams.set('next', destination);
+        const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: callback.toString() } });
         if (error) throw error;
         setMessage('Account created. Check your email to confirm your address, then sign in.');
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.push('/');
-        router.refresh();
+        if (!data.session) throw new Error('Sign-in completed without a reader session. Please try again.');
+        // A full navigation guarantees that the next server request carries the
+        // fresh Supabase cookies before the protected-page check runs.
+        window.location.assign(requestedDestination());
       }
     } catch (cause) { setMessage(cause instanceof Error ? cause.message : 'Authentication failed.'); }
     finally { setBusy(false); }

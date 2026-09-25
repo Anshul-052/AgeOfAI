@@ -21,6 +21,15 @@ export function isAuthenticationPage(path: string) {
   return path === '/login' || path === '/admin/login' || path.startsWith('/auth/');
 }
 
+function copySupabaseState(source: NextResponse, target: NextResponse) {
+  source.cookies.getAll().forEach(cookie => target.cookies.set(cookie));
+  for (const header of ['cache-control', 'expires', 'pragma']) {
+    const value = source.headers.get(header);
+    if (value) target.headers.set(header, value);
+  }
+  return target;
+}
+
 export async function proxy(request: NextRequest) {
   if (!isProtectedRequest(request)) {
     const path = request.nextUrl.pathname;
@@ -33,20 +42,20 @@ export async function proxy(request: NextRequest) {
     const supabase = createServerClient(config.url, config.key, {
       cookies: {
         getAll: () => request.cookies.getAll(),
-        setAll: values => {
+        setAll: (values, headers) => {
           values.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({ request });
           values.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+          Object.entries(headers || {}).forEach(([name, value]) => response.headers.set(name, value));
         },
       },
     });
     const { data } = await supabase.auth.getClaims();
     if (!data?.claims) {
       const login = new URL('/login', request.url);
-      login.searchParams.set('next', path);
-      return NextResponse.redirect(login);
+      login.searchParams.set('next', `${path}${request.nextUrl.search}`);
+      return copySupabaseState(response, NextResponse.redirect(login));
     }
-    if (path === '/login') return NextResponse.redirect(new URL('/', request.url));
     return response;
   }
 
