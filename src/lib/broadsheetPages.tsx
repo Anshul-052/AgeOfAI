@@ -1,9 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import StoryCard, { Story } from '@/components/StoryCard';
-import DramaSection from '@/components/DramaSection';
-import BroadsheetPageScroll from '@/components/BroadsheetPageScroll';
-import domains from '@/lib/domains.json';
+import type { Story } from '@/components/StoryCard';
 
 interface IssueInfo {
   volume: string;
@@ -14,338 +11,140 @@ interface IssueInfo {
   layout?: string | null;
 }
 
+const severityRank: Record<string, number> = { major: 3, notable: 2, normal: 1 };
+
+function wordCount(value: string) {
+  return value.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function paginateStories(stories: Story[]) {
+  const pages: Story[][] = [];
+  let page: Story[] = [];
+  let pageWeight = 0;
+
+  for (const story of stories) {
+    const storyWeight = wordCount(story.crux) + Math.ceil(wordCount(story.title) * 1.8) + 28;
+    if (page.length && (page.length >= 6 || pageWeight + storyWeight > 760)) {
+      pages.push(page);
+      page = [];
+      pageWeight = 0;
+    }
+    page.push(story);
+    pageWeight += storyWeight;
+  }
+  if (page.length) pages.push(page);
+  return pages;
+}
+
+function DenseStory({ story, wide = false }: { story: Story; wide?: boolean }) {
+  const paragraphs = story.crux.split(/\n\s*\n/).filter(Boolean);
+  return (
+    <article className={`min-w-0 border-t-2 border-primary pt-2 pb-3 break-inside-avoid ${wide ? 'md:col-span-2' : ''}`}>
+      <div className="mb-1 flex items-center justify-between gap-3 font-mono text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+        <span className="text-primary">{story.domain}</span>
+        <span>{story.severity === 'major' ? 'Major development' : story.severity}</span>
+      </div>
+      <h3 className={`${wide ? 'text-xl md:text-2xl' : 'text-base md:text-lg'} font-headline-md font-black leading-[1.06] text-balance`}>
+        {story.title}
+      </h3>
+      <div className={`mt-2 text-[12px] md:text-[13px] font-serif leading-[1.38] text-justify hyphens-auto ${wide ? 'md:columns-2 md:gap-6' : ''}`}>
+        {paragraphs.map((paragraph, index) => <p key={index} className={index ? 'mt-2' : ''}>{paragraph}</p>)}
+      </div>
+      <div className="mt-2 flex items-end justify-between gap-2 border-t border-outline-variant/60 pt-1.5">
+        <div className="flex min-w-0 flex-wrap gap-x-2 text-[9px] font-mono uppercase text-on-surface-variant">
+          {story.tags.slice(0, 4).map(tag => <span key={tag.id}>#{tag.name}</span>)}
+        </div>
+        <a href={story.sourceUrl} target="_blank" rel="noreferrer" className="shrink-0 text-[10px] font-bold uppercase text-primary hover:underline">Source</a>
+      </div>
+    </article>
+  );
+}
+
 export function generateBroadsheetPages(
   issue: IssueInfo,
   allStories: Story[],
   dramaStories: Story[]
 ): React.ReactNode[] {
+  const ordered = [...allStories, ...dramaStories].sort((a, b) =>
+    (severityRank[b.severity] || 1) - (severityRank[a.severity] || 1) ||
+    new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime()
+  );
+  const lead = ordered[0];
+  const storyPages = paginateStories(ordered);
+  const issueDate = new Date(issue.publishedAt).toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  });
   const pages: React.ReactNode[] = [];
 
-  const normalStories = allStories.filter(s => s.domain !== 'Drama' && s.domain !== 'Opportunities');
-  const opportunityStories = allStories.filter(s => s.domain === 'Opportunities');
-
-  // --- PAGE 1: Wide Landscape Cover Page ---
   pages.push(
-    <div key="cover-page" className="flex flex-col justify-between h-full w-full border-2 border-primary p-3 bg-surface select-none overflow-hidden box-border">
-      <div className="text-center w-full border-b-2 border-primary pb-2.5 shrink-0">
-        <span className="font-mono text-xs uppercase tracking-widest text-on-surface-variant block mb-1 font-bold">
-          Official Sunday Edition • Technology & Engineering
-        </span>
-        <h1 className="font-headline-xl text-3xl md:text-4xl lg:text-5xl text-center uppercase tracking-tight font-black">{issue.volume}</h1>
-        <h2 className="font-headline-md text-base md:text-lg text-center uppercase text-on-surface-variant mt-0.5 font-bold">Issue #{issue.issueNumber}</h2>
-      </div>
+    <div key="cover-page" className="flex h-full w-full flex-col overflow-hidden border-2 border-primary bg-surface p-4 box-border">
+      <header className="shrink-0 border-b-4 border-double border-primary pb-3 text-center">
+        <span className="block font-mono text-[10px] font-bold uppercase tracking-[.2em] text-on-surface-variant">The weekly technology edition</span>
+        <h1 className="mt-1 font-headline-xl text-4xl md:text-5xl font-black uppercase tracking-tight">{issue.volume}</h1>
+        <p className="font-headline-md text-sm font-bold uppercase tracking-widest text-on-surface-variant">Issue {issue.issueNumber} · {issueDate}</p>
+      </header>
 
-      <div className="flex-1 my-2 flex flex-col md:flex-row items-center gap-3 overflow-hidden">
-        {issue.coverImageUrl ? (
-          <div className="w-full md:w-3/5 h-full relative border-2 border-primary overflow-hidden shadow-lg halftone min-h-[150px]">
-            <Image 
-              src={issue.coverImageUrl} 
-              alt="Issue Cover Art" 
-              fill 
-              className="object-cover" 
-              unoptimized 
-            />
-            <div className="absolute bottom-0 inset-x-0 bg-black/85 text-white p-2 text-center text-xs font-serif italic">
-              {issue.coverImagePrompt || "The Weekly Technology Broadsheet"}
+      <div className="grid min-h-0 flex-1 grid-cols-5 gap-4 py-4">
+        <section className="col-span-3 flex min-h-0 flex-col border-r border-outline-variant pr-4">
+          {issue.coverImageUrl ? (
+            <div className="relative min-h-0 flex-1 overflow-hidden border border-primary halftone">
+              <Image src={issue.coverImageUrl} alt="Issue cover" fill className="object-cover" unoptimized />
+              <div className="absolute inset-x-0 bottom-0 bg-black/85 p-2 text-center text-xs font-serif text-white">{issue.coverImagePrompt || lead?.title}</div>
             </div>
+          ) : lead ? (
+            <div className="flex h-full flex-col justify-center">
+              <p className="eyebrow">Lead report · {lead.domain}</p>
+              <h2 className="mt-2 font-headline-xl text-3xl md:text-4xl font-black leading-[.98] text-balance">{lead.title}</h2>
+              <div className="mt-4 font-serif text-sm leading-relaxed text-justify hyphens-auto">
+                {lead.crux.split(/\n\s*\n/).map((paragraph, index) => <p key={index} className={index ? 'mt-2' : ''}>{paragraph}</p>)}
+              </div>
+            </div>
+          ) : <div className="grid h-full place-items-center font-headline-xl text-3xl">Edition in preparation</div>}
+        </section>
+
+        <aside className="col-span-2 min-w-0">
+          <p className="border-b-2 border-primary pb-1 font-label-caps text-xs font-bold uppercase tracking-widest">Inside this issue</p>
+          <div className="divide-y divide-outline-variant">
+            {ordered.slice(issue.coverImageUrl ? 0 : 1, issue.coverImageUrl ? 6 : 7).map((story, index) => (
+              <div key={story.id} className="py-2.5">
+                <span className="font-mono text-[9px] font-bold uppercase text-primary">{story.domain}</span>
+                <h3 className="font-headline-md text-sm md:text-base font-bold leading-tight">{story.title}</h3>
+                {index < 2 && <p className="mt-1 line-clamp-2 text-[11px] font-serif leading-snug text-on-surface-variant">{story.crux}</p>}
+              </div>
+            ))}
           </div>
-        ) : null}
-
-        <div className="w-full md:w-2/5 flex flex-col justify-center border-2 border-dashed border-outline-variant p-3 text-justify hyphens-auto bg-surface-variant/10 h-full">
-          <h3 className="font-headline-md text-base md:text-lg mb-1.5 font-bold text-center">AgeOfAI Broadsheet</h3>
-          <p className="text-xs md:text-sm font-serif text-on-surface-variant leading-relaxed text-justify">
-            Weekly broadsheet journalism for engineers and technologists. Verified editorial coverage across AI, web development, gaming, crypto, mobile, hardware, and student opportunities.
-          </p>
-        </div>
+        </aside>
       </div>
 
-      <div className="text-center w-full border-t-2 border-primary pt-2.5 shrink-0">
-        <div className="font-label-caps text-xs uppercase border-2 border-primary px-3.5 py-1 inline-block font-bold">
-          {new Date(issue.publishedAt).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </div>
-        <p className="text-[11px] font-mono text-on-surface-variant uppercase mt-1.5">
-          Verified Editorial • Multi-Source Ingestion Engine • Published Sundays
-        </p>
-      </div>
+      <footer className="flex shrink-0 items-center justify-between border-t-4 border-double border-primary pt-2 font-mono text-[9px] font-bold uppercase tracking-wider text-on-surface-variant">
+        <span>AgeOfAI · Verified editorial</span><span>{ordered.length} stories across technology</span>
+      </footer>
     </div>
   );
 
-  // --- PAGE 2: Wide 2-Column Front Page Headlines ---
-  const leadStories = normalStories.slice(0, 2);
-  const remainingStories = normalStories.slice(2);
-
-  if (leadStories.length > 0) {
+  storyPages.forEach((stories, index) => {
+    const domains = Array.from(new Set(stories.map(story => story.domain)));
+    const pageTitle = domains.length === 1 ? domains[0] : index === 0 ? 'The Essential Read' : 'Across Technology';
     pages.push(
-      <div key="front-page" className="flex flex-col h-full w-full overflow-hidden">
-        <div className="border-b-2 border-primary pb-2 mb-2 text-center shrink-0">
-          <h2 className="font-headline-md text-xl md:text-2xl uppercase tracking-wider font-bold">Front Page Headlines</h2>
-          <span className="text-xs font-mono text-on-surface-variant uppercase">Top Engineering Developments</span>
-        </div>
-        <BroadsheetPageScroll className="flex-1 pr-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {leadStories.map((story, idx) => (
-              <StoryCard key={story.id} story={story} isLead={idx === 0} />
-            ))}
+      <div key={`story-page-${index}`} className="flex h-full w-full flex-col overflow-hidden bg-surface p-1 box-border">
+        <header className="mb-3 flex shrink-0 items-end justify-between gap-4 border-b-4 border-double border-primary pb-2">
+          <div>
+            <p className="font-mono text-[9px] font-bold uppercase tracking-[.18em] text-primary">{issue.volume} · Issue {issue.issueNumber}</p>
+            <h2 className="font-headline-xl text-2xl md:text-3xl font-black leading-none">{pageTitle}</h2>
           </div>
-        </BroadsheetPageScroll>
-      </div>
-    );
-  }
+          <p className="max-w-[48%] text-right font-mono text-[9px] font-bold uppercase tracking-wider text-on-surface-variant">{domains.join(' · ')}</p>
+        </header>
 
-  // --- PAGES 3+: Reflowed Wide Landscape Domain Section Pages ---
-  const domainSequence = domains.map(domain => domain.id).filter(domain => !['Campus', 'Drama', 'Opportunities'].includes(domain));
-
-  const storiesByDomain: Record<string, Story[]> = {};
-  remainingStories.forEach(story => {
-    const domain = story.domain || 'General';
-    if (!storiesByDomain[domain]) {
-      storiesByDomain[domain] = [];
-    }
-    storiesByDomain[domain].push(story);
-  });
-
-  const orderedDomains = [
-    ...domainSequence.filter(d => storiesByDomain[d] && storiesByDomain[d].length > 0),
-    ...Object.keys(storiesByDomain).filter(d => !domainSequence.includes(d) && d !== 'Campus' && d !== 'Drama' && d !== 'Opportunities' && storiesByDomain[d].length > 0)
-  ];
-
-  orderedDomains.forEach((domain) => {
-    const domainStories = storiesByDomain[domain];
-    if (domainStories.length === 0) return;
-
-    const severityRank: Record<string, number> = { major: 3, notable: 2, normal: 1 };
-    domainStories.sort((a, b) => (severityRank[b.severity] || 1) - (severityRank[a.severity] || 1));
-
-    const leadStory = domainStories[0];
-    const inBriefStories = domainStories.slice(1, 5);
-    const deeperLookStory = domainStories[5] || null;
-
-    pages.push(
-      <div key={`domain-section-${domain}`} className="flex flex-col h-full w-full overflow-hidden">
-        <div className="border-b-2 border-primary pb-2 mb-2.5 flex justify-between items-center shrink-0">
-          <h2 className="font-headline-md text-xl md:text-2xl uppercase tracking-wider font-bold">{domain}</h2>
-          <span className="text-xs font-mono text-on-surface-variant uppercase">Section Front • This Edition</span>
+        <div className={`grid min-h-0 flex-1 content-start gap-x-5 gap-y-1 ${stories.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+          {stories.map(story => <DenseStory key={story.id} story={story} wide={stories.length === 1} />)}
         </div>
 
-        <BroadsheetPageScroll className="flex-1 pr-1">
-          <div className="flex flex-col md:flex-row gap-5 items-start">
-            {/* Left Column: Lead Story */}
-            {leadStory && (
-              <div className="w-full md:w-3/5 border-b md:border-b-0 md:border-r border-outline-variant pb-3 md:pb-0 md:pr-5">
-                <StoryCard story={leadStory} isLead={true} />
-              </div>
-            )}
-
-            {/* Right Column: In Brief & Deeper Look */}
-            <div className="w-full md:w-2/5 space-y-3.5">
-              {/* In Brief Sub-section */}
-              {inBriefStories.length > 0 && (
-                <section className="bg-surface-variant/15 p-3.5 rounded-md border border-outline-variant/60">
-                  <h3 className="font-headline-md text-xs md:text-sm uppercase text-primary mb-2.5 tracking-widest flex items-center gap-2 font-bold">
-                    <span className="w-2 h-2 rounded-full bg-primary inline-block"></span>
-                    In Brief — {domain} Round-up
-                  </h3>
-                  <div className="space-y-2.5">
-                    {inBriefStories.map(story => (
-                      <article key={story.id} className="border-b border-outline-variant/40 pb-2 last:border-b-0">
-                        <h4 className="font-headline-md text-xs md:text-sm font-bold leading-snug hover:underline">
-                          <a href={story.sourceUrl} target="_blank" rel="noreferrer">
-                            {story.title}
-                          </a>
-                        </h4>
-                        <p className="text-xs font-serif text-on-surface-variant line-clamp-2 mt-0.5 text-justify hyphens-auto">
-                          {story.crux}
-                        </p>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Deeper Look Sub-section */}
-              {deeperLookStory && (
-                <section className="p-3.5 border-2 border-primary bg-surface rounded-md shadow-sm">
-                  <div className="text-[10px] font-mono uppercase bg-primary text-on-primary px-2 py-0.5 inline-block mb-1.5 font-bold tracking-widest">
-                    Deeper Look: Technical Analysis
-                  </div>
-                  <h3 className="font-headline-md text-sm md:text-base leading-tight font-bold mb-1">
-                    {deeperLookStory.title}
-                  </h3>
-                  <p className="text-xs font-serif leading-relaxed text-on-surface-variant mb-2.5 text-justify hyphens-auto">
-                    {deeperLookStory.crux}
-                  </p>
-                  <a 
-                    href={deeperLookStory.sourceUrl} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="text-xs font-label-caps uppercase text-primary hover:underline font-bold"
-                  >
-                    Read Full Paper and Code
-                  </a>
-                </section>
-              )}
-            </div>
-          </div>
-        </BroadsheetPageScroll>
+        <footer className="mt-2 flex shrink-0 items-center justify-between border-t border-primary pt-1 font-mono text-[9px] font-bold uppercase text-on-surface-variant">
+          <span>AgeOfAI · Read across technology</span><span>{index + 2}</span>
+        </footer>
       </div>
     );
   });
-
-  // --- Opportunities Page ---
-  if (opportunityStories.length > 0) {
-    pages.push(
-      <div key="opportunities-page" className="flex flex-col h-full w-full overflow-hidden bg-emerald-950/5 border-2 border-emerald-600/40 p-2.5 rounded-md">
-        <div className="border-b-2 border-emerald-600 pb-2 mb-2.5 flex justify-between items-center shrink-0">
-          <div>
-            <h2 className="font-headline-md text-xl md:text-2xl uppercase tracking-wider text-emerald-800 dark:text-emerald-300 font-bold">
-              Student Opportunities and Grants
-            </h2>
-            <p className="text-xs font-mono text-on-surface-variant uppercase mt-0.5">
-              Hackathons, Internships, Fellowships & Free Cloud Credits
-            </p>
-          </div>
-          <span className="text-xs font-mono bg-emerald-600 text-white px-3 py-1 rounded uppercase font-bold">
-            Student Edition
-          </span>
-        </div>
-
-        <BroadsheetPageScroll className="flex-1 pr-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {opportunityStories.map(story => {
-              const pubDateStr = story.publishedAt 
-                ? new Date(story.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : 'Recent';
-
-              return (
-                <article key={story.id} className="p-3 bg-surface border-2 border-emerald-600/25 rounded-md shadow-sm hover:border-emerald-600/50 transition-colors flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-1.5">
-                      <span className="text-[10px] font-mono uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded font-bold border border-emerald-500/30">
-                        {story.severity === 'major' ? 'Featured Opportunity' : 'Opportunity'}
-                      </span>
-                      <span className="text-[10px] font-mono text-on-surface-variant">
-                        {pubDateStr}
-                      </span>
-                    </div>
-
-                    <h3 className="font-headline-md text-sm md:text-base font-bold leading-tight mb-1.5 text-on-surface">
-                      {story.title}
-                    </h3>
-
-                    <p className="text-xs font-serif text-on-surface-variant leading-relaxed mb-2.5 text-justify hyphens-auto">
-                      {story.crux}
-                    </p>
-                  </div>
-
-                  <div className="flex justify-between items-center pt-2 border-t border-outline-variant/40 mt-1">
-                    <div className="flex gap-1 flex-wrap">
-                      {story.tags.map(tag => (
-                        <span key={tag.id} className="text-[9px] font-mono bg-surface-variant px-1.5 py-0.5 rounded text-on-surface-variant">
-                          #{tag.name}
-                        </span>
-                      ))}
-                    </div>
-                    <a
-                      href={story.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-label-caps uppercase text-emerald-700 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1"
-                    >
-                      Apply or learn more
-                    </a>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </BroadsheetPageScroll>
-      </div>
-    );
-  }
-
-  // --- Campus Page (Student-focused content) ---
-  const campusStories = allStories.filter(s => s.domain === 'Campus');
-  if (campusStories.length > 0) {
-    pages.push(
-      <div key="campus-page" className="flex flex-col h-full w-full overflow-hidden bg-blue-950/5 border-2 border-blue-600/40 p-2.5 rounded-md">
-        <div className="border-b-2 border-blue-600 pb-2 mb-2.5 flex justify-between items-center shrink-0">
-          <div>
-            <h2 className="font-headline-md text-xl md:text-2xl uppercase tracking-wider text-blue-800 dark:text-blue-300 font-bold">
-              Campus and Student Edition
-            </h2>
-            <p className="text-xs font-mono text-on-surface-variant uppercase mt-0.5">
-              Learning Resources, Student Opportunities and Career Guidance
-            </p>
-          </div>
-          <span className="text-xs font-mono bg-blue-600 text-white px-3 py-1 rounded uppercase font-bold">
-            Student Section
-          </span>
-        </div>
-
-        <BroadsheetPageScroll className="flex-1 pr-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {campusStories.map(story => {
-              const pubDateStr = story.publishedAt 
-                ? new Date(story.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                : 'Recent';
-
-              return (
-                <article key={story.id} className="p-3 bg-surface border-2 border-blue-600/25 rounded-md shadow-sm hover:border-blue-600/50 transition-colors flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-1.5">
-                      <span className="text-[10px] font-mono uppercase bg-blue-500/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-bold border border-blue-500/30">
-                        {story.severity === 'major' ? 'Featured' : 'Campus'}
-                      </span>
-                      <span className="text-[10px] font-mono text-on-surface-variant">
-                        {pubDateStr}
-                      </span>
-                    </div>
-
-                    <h3 className="font-headline-md text-sm md:text-base font-bold leading-tight mb-1.5 text-on-surface">
-                      {story.title}
-                    </h3>
-
-                    <p className="text-xs font-serif text-on-surface-variant leading-relaxed mb-2.5 text-justify hyphens-auto">
-                      {story.crux}
-                    </p>
-                  </div>
-
-                  <div className="flex justify-between items-center pt-2 border-t border-outline-variant/40 mt-1">
-                    <div className="flex gap-1 flex-wrap">
-                      {story.tags.map(tag => (
-                        <span key={tag.id} className="text-[9px] font-mono bg-surface-variant px-1.5 py-0.5 rounded text-on-surface-variant">
-                          #{tag.name}
-                        </span>
-                      ))}
-                    </div>
-                    <a
-                      href={story.sourceUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-label-caps uppercase text-blue-700 dark:text-blue-400 font-bold hover:underline flex items-center gap-1"
-                    >
-                      Read more
-                    </a>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </BroadsheetPageScroll>
-      </div>
-    );
-  }
-
-  // --- FINAL PAGE: Back Page Drama ---
-  if (dramaStories.length > 0) {
-    pages.push(
-      <div key="drama-back-page" className="flex flex-col h-full w-full overflow-hidden bg-neutral-950 text-neutral-100 p-2.5 rounded-md">
-        <BroadsheetPageScroll className="flex-1 pr-1">
-          <DramaSection stories={dramaStories} />
-        </BroadsheetPageScroll>
-      </div>
-    );
-  }
 
   return pages;
 }

@@ -182,6 +182,12 @@ export default async function AdminPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2 pt-2 border-t border-outline-variant/40">
+                  <Link
+                    href={`/admin/issues/${issue.id}/preview`}
+                    className="border border-primary px-3 py-1.5 font-label-caps text-xs font-bold uppercase hover:bg-primary hover:text-on-primary"
+                  >
+                    Preview full issue
+                  </Link>
                   {issue.isPublished ? (
                     <DispatchNewsletterButton issueId={issue.id} issueNumber={issue.issueNumber} />
                   ) : (

@@ -6,9 +6,10 @@ import HTMLFlipBook from "react-pageflip";
 interface FlipBookProps {
   children: React.ReactNode[];
   layout?: string;
+  preview?: boolean;
 }
 
-export default function FlipBook({ children, layout = "lead-story-focus" }: FlipBookProps) {
+export default function FlipBook({ children, layout = "lead-story-focus", preview = false }: FlipBookProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
   const [isMobile, setIsMobile] = useState(false);
@@ -39,43 +40,22 @@ export default function FlipBook({ children, layout = "lead-story-focus" }: Flip
       const mobile = viewportWidth < 768;
       setIsMobile(mobile);
 
-      const targetAspectRatio = 1.35; // Wide Landscape Ratio (width / height)
-
       if (document.fullscreenElement) {
-        // Edge-to-Edge Fullscreen Calculation with 0 letterboxing margins
         if (mobile) {
           setDimensions({ width: viewportWidth, height: viewportHeight });
         } else {
-          // 2-page spread fills viewport height/width edge-to-edge
-          const spreadRatio = 2 * targetAspectRatio; // 2.7
-          let computedSpreadHeight = viewportHeight;
-          let computedSpreadWidth = computedSpreadHeight * spreadRatio;
-
-          if (computedSpreadWidth > viewportWidth) {
-            computedSpreadWidth = viewportWidth;
-            computedSpreadHeight = computedSpreadWidth / spreadRatio;
-          }
-
-          const width = Math.floor(computedSpreadWidth / 2);
-          const height = Math.floor(computedSpreadHeight);
-
-          setDimensions({ width, height });
+          // Each page is half of a 16:9 spread. At 1920x1080 this is
+          // exactly two 960x1080 pages with no letterboxing.
+          setDimensions({ width: Math.floor(viewportWidth / 2), height: viewportHeight });
         }
       } else {
         // Dynamically calculate top offset based on rendered container position
         const containerTop = containerRef.current ? containerRef.current.getBoundingClientRect().top : 120;
         const maxAvailableHeight = Math.max(360, viewportHeight - containerTop - 30);
-        const maxAvailableWidth = mobile
-          ? Math.max(300, viewportWidth - 24)
-          : Math.max(520, (viewportWidth - 40) / 2);
-
-        let computedHeight = maxAvailableHeight;
-        let computedWidth = computedHeight * targetAspectRatio;
-
-        if (computedWidth > maxAvailableWidth) {
-          computedWidth = maxAvailableWidth;
-          computedHeight = computedWidth / targetAspectRatio;
-        }
+        const pageRatio = mobile ? 0.75 : 8 / 9;
+        const maxAvailableWidth = mobile ? Math.max(300, viewportWidth - 24) : Math.max(300, (viewportWidth - 40) / 2);
+        const computedHeight = Math.min(maxAvailableHeight, maxAvailableWidth / pageRatio);
+        const computedWidth = computedHeight * pageRatio;
 
         const width = Math.floor(Math.max(300, computedWidth));
         const height = Math.floor(Math.max(350, computedHeight));
@@ -98,7 +78,7 @@ export default function FlipBook({ children, layout = "lead-story-focus" }: Flip
     try {
       if (!document.fullscreenElement) {
         if (containerRef.current?.requestFullscreen) {
-          await containerRef.current.requestFullscreen();
+          await containerRef.current.requestFullscreen({ navigationUI: "hide" });
         }
       } else {
         if (document.exitFullscreen) {
@@ -129,7 +109,7 @@ export default function FlipBook({ children, layout = "lead-story-focus" }: Flip
       }`}>
         {!isFullscreen && (
           <span className="text-[10px] font-mono uppercase bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20 font-bold">
-            Template: {layout.replace(/-/g, ' ')} • Pages: {children.length} {isMobile ? '(Mobile Mode)' : '(Wide Broadsheet Spread)'}
+            {preview ? 'Private draft preview' : `Template: ${layout.replace(/-/g, ' ')}`} • {children.length} pages {isMobile ? '• Mobile' : '• 16:9 fullscreen spread'}
           </span>
         )}
 
@@ -187,7 +167,7 @@ export default function FlipBook({ children, layout = "lead-story-focus" }: Flip
           minHeight={350}
           maxHeight={1600}
           maxShadowOpacity={0.4}
-          showCover={true}
+          showCover={false}
           mobileScrollSupport={true}
           className="demo-book"
           style={{ margin: "0 auto" }}
@@ -195,7 +175,7 @@ export default function FlipBook({ children, layout = "lead-story-focus" }: Flip
           {children.map((child, index) => (
             <div 
               key={index} 
-              className="page bg-surface border border-outline-variant/80 overflow-hidden p-3 sm:p-5 page-curl h-full flex flex-col justify-between box-border"
+              className="page bg-surface border border-outline-variant/80 overflow-hidden p-3 sm:p-4 page-curl h-full flex flex-col justify-between box-border"
               style={{ width: `${dimensions.width}px`, height: `${dimensions.height}px` }}
             >
               {child}
