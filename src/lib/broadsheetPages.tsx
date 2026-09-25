@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import type { Story } from '@/components/StoryCard';
+import BroadsheetPageScroll from '@/components/BroadsheetPageScroll';
 
 interface IssueInfo {
   volume: string;
@@ -47,7 +48,7 @@ function DenseStory({ story, wide = false }: { story: Story; wide?: boolean }) {
       <h3 className={`${wide ? 'text-xl md:text-2xl' : 'text-base md:text-lg'} font-headline-md font-black leading-[1.06] text-balance`}>
         {story.title}
       </h3>
-      <div className={`mt-2 text-[12px] md:text-[13px] font-serif leading-[1.38] text-justify hyphens-auto ${wide ? 'md:columns-2 md:gap-6' : ''}`}>
+      <div className={`mt-2 text-sm md:text-[15px] font-serif leading-[1.48] text-justify hyphens-auto ${wide ? 'md:columns-2 md:gap-6' : ''}`}>
         {paragraphs.map((paragraph, index) => <p key={index} className={index ? 'mt-2' : ''}>{paragraph}</p>)}
       </div>
       <div className="mt-2 flex items-end justify-between gap-2 border-t border-outline-variant/60 pt-1.5">
@@ -84,8 +85,9 @@ export function generateBroadsheetPages(
         <p className="font-headline-md text-sm font-bold uppercase tracking-widest text-on-surface-variant">Issue {issue.issueNumber} · {issueDate}</p>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-5 gap-4 py-4">
-        <section className="col-span-3 flex min-h-0 flex-col border-r border-outline-variant pr-4">
+      <BroadsheetPageScroll className="min-h-0 flex-1">
+      <div className="grid min-h-full grid-cols-5 gap-4 py-4">
+        <section className="col-span-3 flex min-h-[32rem] flex-col border-r border-outline-variant pr-4">
           {issue.coverImageUrl ? (
             <div className="relative min-h-0 flex-1 overflow-hidden border border-primary halftone">
               <Image src={issue.coverImageUrl} alt="Issue cover" fill className="object-cover" unoptimized />
@@ -115,6 +117,7 @@ export function generateBroadsheetPages(
           </div>
         </aside>
       </div>
+      </BroadsheetPageScroll>
 
       <footer className="flex shrink-0 items-center justify-between border-t-4 border-double border-primary pt-2 font-mono text-[9px] font-bold uppercase tracking-wider text-on-surface-variant">
         <span>AgeOfAI · Verified editorial</span><span>{ordered.length} stories across technology</span>
@@ -135,9 +138,11 @@ export function generateBroadsheetPages(
           <p className="max-w-[48%] text-right font-mono text-[9px] font-bold uppercase tracking-wider text-on-surface-variant">{domains.join(' · ')}</p>
         </header>
 
-        <div className={`grid min-h-0 flex-1 content-start gap-x-5 gap-y-1 ${stories.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
-          {stories.map(story => <DenseStory key={story.id} story={story} wide={stories.length === 1} />)}
-        </div>
+        <BroadsheetPageScroll className="min-h-0 flex-1 pr-2">
+          <div className={`grid content-start gap-x-5 gap-y-1 ${stories.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+            {stories.map(story => <DenseStory key={story.id} story={story} wide={stories.length === 1} />)}
+          </div>
+        </BroadsheetPageScroll>
 
         <footer className="mt-2 flex shrink-0 items-center justify-between border-t border-primary pt-1 font-mono text-[9px] font-bold uppercase text-on-surface-variant">
           <span>AgeOfAI · Read across technology</span><span>{index + 2}</span>

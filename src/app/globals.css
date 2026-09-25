@@ -22,6 +22,7 @@
 .masthead-title { display:block; color:#171611; text-align:center; font:900 clamp(3.3rem,9vw,8.5rem)/.86 'Playfair Display',Georgia,serif; letter-spacing:-.075em; padding:.72rem 0 .85rem; }
 .masthead-title span { font-size:.28em; letter-spacing:.04em; vertical-align:middle; margin:0 .18em; }
 .masthead-title .masthead-period { color:#ae1c1c; font-size:1em; margin:0; }
+.masthead-navigation { position:sticky; top:0; z-index:40; width:100%; max-width:96rem; margin:0 auto; padding:0 clamp(1rem,4vw,4rem); background:rgba(247,243,232,.97); backdrop-filter:blur(10px); }
 .masthead-nav { display:flex; justify-content:space-between; align-items:center; gap:1rem; border-top:3px double #211f1a; border-bottom:1px solid #211f1a; min-height:3rem; }
 .masthead-nav nav { display:flex; align-items:center; gap:clamp(.9rem,2.4vw,2rem); font:700 .84rem 'Archivo Narrow',sans-serif; text-transform:uppercase; letter-spacing:.055em; white-space:nowrap; }
 .masthead-nav a:hover, .domain-rail a:hover { color:#ae1c1c; text-decoration:underline; text-underline-offset:4px; }
@@ -51,9 +52,8 @@
 .story-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:clamp(1.5rem,3vw,3rem); }
 .story-grid > * { min-width:0; }
 .story-lead { grid-column:1 / -1; }
-.story-lead .story-card { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(16rem,.75fr); gap:clamp(1.2rem,3vw,3rem); border-bottom:3px double #211f1a; margin-bottom:2rem; }
-.story-lead .story-card header, .story-lead .story-card > div:last-of-type { grid-column:1; }
-.story-lead .story-card .story-copy { grid-column:2; grid-row:1 / span 2; border-left:1px solid #aaa394; padding-left:clamp(1rem,2vw,2rem); }
+.story-lead .story-card { display:block; border-bottom:3px double #211f1a; margin-bottom:2rem; }
+.story-lead .story-card .story-copy { columns:2; column-gap:clamp(1.5rem,3vw,3rem); column-rule:1px solid #aaa394; }
 .story-copy { font-size:1rem; text-align:left; hyphens:auto; }
 .story-copy p + p { margin-top:.8em; }
 .story-card h2 { text-wrap:balance; overflow-wrap:anywhere; }
@@ -101,7 +101,7 @@
   .story-grid, .archive-grid { grid-template-columns:1fr; }
   .story-lead { grid-column:auto; }
   .story-lead .story-card { display:block; }
-  .story-lead .story-card .story-copy { border-left:0; padding-left:0; }
+  .story-lead .story-card .story-copy { columns:1; column-rule:0; }
   .archive-filters { grid-template-columns:1fr 1fr; }
   .archive-filters .search-field { grid-column:1 / -1; }
   .archive-filters button { align-self:stretch; }

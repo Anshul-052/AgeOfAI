@@ -15,13 +15,17 @@ export default function FlipBook({ children, layout = "lead-story-focus", previe
   const [isMobile, setIsMobile] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isOpened, setIsOpened] = useState(false);
+  const [pageStart, setPageStart] = useState(0);
+  const spreadSize = isMobile ? 1 : 2;
+  const lastPageStart = Math.max(0, Math.floor((children.length - 1) / spreadSize) * spreadSize);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
       const active = document.fullscreenElement !== null;
       setIsFullscreen(active);
       if (active) {
-        setIsOpened(true); // Fullscreen always opens directly into 2-page spread
+        setIsOpened(true);
+        setPageStart(0);
       }
     };
 
@@ -74,6 +78,22 @@ export default function FlipBook({ children, layout = "lead-story-focus", previe
     };
   }, [isFullscreen]);
 
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowRight' || event.key === 'PageDown') {
+        event.preventDefault();
+        setPageStart(current => Math.min(lastPageStart, current + spreadSize));
+      }
+      if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+        event.preventDefault();
+        setPageStart(current => Math.max(0, current - spreadSize));
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen, lastPageStart, spreadSize]);
+
   const toggleFullscreen = async () => {
     try {
       if (!document.fullscreenElement) {
@@ -103,27 +123,42 @@ export default function FlipBook({ children, layout = "lead-story-focus", previe
           : "my-1 shadow-2xl bg-surface-variant/15 p-2 md:p-3 rounded-lg border border-outline-variant/60 max-w-full overflow-hidden"
       }`}
     >
-      {/* Control Bar */}
-      <div className={`w-full flex flex-wrap items-center justify-between gap-2 mb-2 px-3 select-none shrink-0 ${
-        isFullscreen ? "absolute top-3 right-4 z-50 w-auto bg-black/60 p-1.5 rounded-lg backdrop-blur-md" : ""
-      }`}>
-        {!isFullscreen && (
-          <span className="text-[10px] font-mono uppercase bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20 font-bold">
-            {preview ? 'Private draft preview' : `Template: ${layout.replace(/-/g, ' ')}`} • {children.length} pages {isMobile ? '• Mobile' : '• 16:9 fullscreen spread'}
-          </span>
-        )}
+      {!isFullscreen && <div className="w-full flex flex-wrap items-center justify-between gap-2 mb-2 px-3 select-none shrink-0">
+        <span className="text-[10px] font-mono uppercase bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20 font-bold">
+          {preview ? 'Private draft preview' : `Template: ${layout.replace(/-/g, ' ')}`} • {children.length} pages {isMobile ? '• Mobile' : '• 16:9 fullscreen spread'}
+        </span>
 
         <button
           onClick={toggleFullscreen}
           className="bg-primary text-on-primary font-label-caps text-xs uppercase px-3.5 py-1.5 rounded hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-lg font-bold"
-          title={isFullscreen ? "Exit Fullscreen (Esc)" : "Enter Fullscreen Reader Mode"}
+          title="Enter Fullscreen Reader Mode"
         >
-          {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+          Fullscreen
         </button>
-      </div>
+      </div>}
 
-      {/* Closed-Book Starting State on Dashboard View */}
-      {!isOpened && !isFullscreen ? (
+      {isFullscreen ? (
+        <>
+          <div className={`grid h-screen w-screen ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} bg-neutral-900`}>
+            {Array.from({ length: spreadSize }, (_, offset) => {
+              const pageIndex = pageStart + offset;
+              const page = children[pageIndex];
+              return (
+                <section key={pageIndex} className="h-screen min-w-0 overflow-hidden border-r border-neutral-500 bg-surface p-3 sm:p-5 box-border" aria-label={page ? `Magazine page ${pageIndex + 1}` : 'End of issue'}>
+                  {page || <div className="grid h-full place-items-center border border-outline-variant font-headline-xl text-3xl text-on-surface-variant">End of issue</div>}
+                </section>
+              );
+            })}
+          </div>
+          <div className="absolute inset-x-0 bottom-4 z-50 mx-auto flex w-fit items-center gap-2 rounded-full border border-white/30 bg-black/80 p-1.5 text-white shadow-2xl backdrop-blur-md">
+            <button type="button" disabled={pageStart === 0} onClick={() => setPageStart(current => Math.max(0, current - spreadSize))} className="rounded-full px-3 py-2 text-xs font-bold uppercase disabled:opacity-35">Previous</button>
+            <span className="min-w-24 text-center font-mono text-[10px] uppercase">{preview ? 'Draft · ' : ''}{pageStart + 1}–{Math.min(children.length, pageStart + spreadSize)} / {children.length}</span>
+            <button type="button" disabled={pageStart >= lastPageStart} onClick={() => setPageStart(current => Math.min(lastPageStart, current + spreadSize))} className="rounded-full px-3 py-2 text-xs font-bold uppercase disabled:opacity-35">Next</button>
+            <span aria-hidden="true" className="h-6 w-px bg-white/30" />
+            <button type="button" onClick={toggleFullscreen} className="rounded-full bg-white px-3 py-2 text-xs font-bold uppercase text-black">Exit</button>
+          </div>
+        </>
+      ) : !isOpened ? (
         <div 
           onClick={handleOpenBook}
           className="cursor-pointer group flex flex-col items-center justify-center my-3 transition-transform duration-300 hover:scale-[1.015] select-none"
@@ -158,7 +193,8 @@ export default function FlipBook({ children, layout = "lead-story-focus", previe
       ) : (
         /* Open Broadsheet Spread Reading View */
         /* @ts-expect-error - react-pageflip types */
-        <HTMLFlipBook 
+        <HTMLFlipBook
+          key={`${dimensions.width}x${dimensions.height}`}
           width={dimensions.width} 
           height={dimensions.height}
           size="fixed"
