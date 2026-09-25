@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import domains from '@/lib/domains.json';
 import type { DraftStoryResult } from '@/lib/gemini';
 
@@ -35,6 +35,19 @@ async function ensureTags(tx: Prisma.TransactionClient, names: string[]) {
     }
   }
   return tags;
+}
+
+async function ensureTagsInBulk(tx: Prisma.TransactionClient, names: string[]) {
+  const uniqueNames = Array.from(new Set(names));
+  if (!uniqueNames.length) return [];
+
+  const existing = await tx.tag.findMany({ where: { name: { in: uniqueNames } } });
+  const existingNames = new Set(existing.map(tag => tag.name));
+  const missingNames = uniqueNames.filter(name => !existingNames.has(name));
+  if (missingNames.length) {
+    await tx.tag.createMany({ data: missingNames.map(name => ({ name })) });
+  }
+  return tx.tag.findMany({ where: { name: { in: uniqueNames } } });
 }
 
 export async function publishIssue(db: PrismaClient, issueId: string) {
@@ -126,23 +139,39 @@ export async function addDraftedCandidatesToIssue(db: PrismaClient, candidateIds
 
     // Resolve shared tags once for the whole batch instead of repeating up to
     // eight tag queries for every story. This keeps a 30-story transaction short.
-    const allTags = await ensureTags(tx, reviewedCandidates.flatMap(item => item.tags));
+    const claimed = await tx.ingestedCandidate.updateMany({
+      where: { id: { in: ids }, status: 'drafted' },
+      data: { status: 'published' },
+    });
+    if (claimed.count !== ids.length) throw new EditorialError('A selected candidate changed during publication. Refresh and retry.', 409);
+
+    const allTags = await ensureTagsInBulk(tx, reviewedCandidates.flatMap(item => item.tags));
     const tagsByName = new Map(allTags.map(tag => [tag.name, tag]));
-    const stories = [];
-    for (const { candidate, draft, domain, severity, tags } of reviewedCandidates) {
-      stories.push(await createReviewedStory(tx, {
+    const stories = await tx.story.createManyAndReturn({
+      data: reviewedCandidates.map(({ candidate, draft, domain, severity }) => ({
         title: candidate.rawTitle.trim(), crux: draft.crux.trim(), domain, severity,
         issueId, sourceUrl: candidate.sourceUrl, publishedAt: new Date(), verificationStatus: 'editor-reviewed',
-      }, tags.flatMap(name => {
+      })),
+    });
+    const storiesBySource = new Map(stories.map(story => [story.sourceUrl, story]));
+    const relations = reviewedCandidates.flatMap(({ candidate, tags }) => {
+      const story = storiesBySource.get(candidate.sourceUrl);
+      if (!story) throw new EditorialError(`The story for "${candidate.rawTitle}" was not created.`, 500);
+      return tags.flatMap(name => {
         const tag = tagsByName.get(name);
-        return tag ? [tag] : [];
-      })));
+        return tag ? [{ storyId: story.id, tagId: tag.id }] : [];
+      });
+    });
+    if (relations.length) {
+      await tx.$executeRaw(Prisma.sql`
+        INSERT INTO "_StoryToTag" ("A", "B")
+        VALUES ${Prisma.join(relations.map(relation => Prisma.sql`(${relation.storyId}, ${relation.tagId})`))}
+        ON CONFLICT ("A", "B") DO NOTHING
+      `);
     }
-    const claimed = await tx.ingestedCandidate.updateMany({ where: { id: { in: ids }, status: 'drafted' }, data: { status: 'published' } });
-    if (claimed.count !== ids.length) throw new EditorialError('A selected candidate changed during publication. Refresh and retry.', 409);
     return stories;
   }, {
     maxWait: 10_000,
-    timeout: 45_000,
+    timeout: 30_000,
   });
 }

@@ -44,14 +44,18 @@ test('selected completed drafts are added to an issue in one transaction', async
     for (const statement of sql.split(';').map(s => s.trim()).filter(Boolean)) await db.$executeRawUnsafe(statement);
     const issue = await db.issue.create({ data: { volume: 'Test', issueNumber: 3, publishedAt: new Date(), isPublished: false } });
     const draftJson = JSON.stringify({ crux: 'A complete and reviewed report.', tags: ['Systems'], domain: 'Research', severity: 'notable' });
-    const first = await db.ingestedCandidate.create({ data: { rawTitle: 'First report', rawContent: 'Source one', source: 'test', sourceUrl: 'https://example.com/first', contentHash: 'first', status: 'drafted', draftJson } });
-    const second = await db.ingestedCandidate.create({ data: { rawTitle: 'Second report', rawContent: 'Source two', source: 'test', sourceUrl: 'https://example.com/second', contentHash: 'second', status: 'drafted', draftJson } });
+    const candidates = await db.ingestedCandidate.createManyAndReturn({ data: Array.from({ length: 30 }, (_, index) => ({
+      rawTitle: `Report ${index + 1}`, rawContent: `Source ${index + 1}`, source: 'test',
+      sourceUrl: `https://example.com/batch-${index + 1}`, contentHash: `batch-${index + 1}`,
+      status: 'drafted', draftJson,
+    })) });
     const editorialDb = db as unknown as PrismaClient;
-    const stories = await addDraftedCandidatesToIssue(editorialDb, [first.id, second.id], issue.id);
-    assert.equal(stories.length, 2);
-    assert.equal(await db.story.count({ where: { issueId: issue.id } }), 2);
-    assert.equal(await db.ingestedCandidate.count({ where: { status: 'published' } }), 2);
-    await assert.rejects(addDraftedCandidatesToIssue(editorialDb, [first.id], issue.id), (error: unknown) => error instanceof EditorialError && error.status === 409);
+    const stories = await addDraftedCandidatesToIssue(editorialDb, candidates.map(candidate => candidate.id), issue.id);
+    assert.equal(stories.length, 30);
+    assert.equal(await db.story.count({ where: { issueId: issue.id } }), 30);
+    assert.equal(await db.ingestedCandidate.count({ where: { status: 'published' } }), 30);
+    assert.equal(await db.tag.count({ where: { stories: { some: { issueId: issue.id } } } }), 1);
+    await assert.rejects(addDraftedCandidatesToIssue(editorialDb, [candidates[0].id], issue.id), (error: unknown) => error instanceof EditorialError && error.status === 409);
   } finally { await db.$disconnect(); }
 });
 
