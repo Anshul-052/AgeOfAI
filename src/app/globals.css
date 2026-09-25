@@ -132,6 +132,8 @@
   /* Custom Broadsheet Newspaper Scrollbar */
   .broadsheet-scroll {
     overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
     overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;

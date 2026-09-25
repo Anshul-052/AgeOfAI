@@ -25,7 +25,7 @@ function paginateStories(stories: Story[]) {
 
   for (const story of stories) {
     const storyWeight = wordCount(story.crux) + Math.ceil(wordCount(story.title) * 1.8) + 28;
-    if (page.length && (page.length >= 6 || pageWeight + storyWeight > 760)) {
+    if (page.length && (page.length >= 4 || pageWeight + storyWeight > 620)) {
       pages.push(page);
       page = [];
       pageWeight = 0;
@@ -40,20 +40,20 @@ function paginateStories(stories: Story[]) {
 function DenseStory({ story, wide = false }: { story: Story; wide?: boolean }) {
   const paragraphs = story.crux.split(/\n\s*\n/).filter(Boolean);
   return (
-    <article className={`min-w-0 border-t-2 border-primary pt-2 pb-3 break-inside-avoid ${wide ? 'md:col-span-2' : ''}`}>
-      <div className="mb-1 flex items-center justify-between gap-3 font-mono text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-        <span className="text-primary">{story.domain}</span>
-        <span>{story.severity === 'major' ? 'Major development' : story.severity}</span>
+    <article className={`min-w-0 overflow-x-hidden border border-outline-variant/70 border-t-2 border-t-primary bg-surface px-3 py-3 break-inside-avoid ${wide ? 'md:col-span-2' : ''}`}>
+      <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 font-mono text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+        <span className="min-w-0 break-words text-primary">{story.domain}</span>
+        <span className="text-right">{story.severity === 'major' ? 'Major development' : story.severity}</span>
       </div>
-      <h3 className={`${wide ? 'text-xl md:text-2xl' : 'text-base md:text-lg'} font-headline-md font-black leading-[1.06] text-balance`}>
+      <h3 className={`${wide ? 'text-xl md:text-2xl' : 'text-base md:text-xl'} font-headline-md font-black leading-[1.12] break-words [overflow-wrap:anywhere]`}>
         {story.title}
       </h3>
-      <div className={`mt-2 text-sm md:text-[15px] font-serif leading-[1.48] text-justify hyphens-auto ${wide ? 'md:columns-2 md:gap-6' : ''}`}>
+      <div className={`mt-3 min-w-0 break-words text-left text-sm md:text-[15px] font-serif leading-[1.52] hyphens-auto [overflow-wrap:anywhere] ${wide ? 'md:columns-2 md:gap-8' : ''}`}>
         {paragraphs.map((paragraph, index) => <p key={index} className={index ? 'mt-2' : ''}>{paragraph}</p>)}
       </div>
       <div className="mt-2 flex items-end justify-between gap-2 border-t border-outline-variant/60 pt-1.5">
-        <div className="flex min-w-0 flex-wrap gap-x-2 text-[9px] font-mono uppercase text-on-surface-variant">
-          {story.tags.slice(0, 4).map(tag => <span key={tag.id}>#{tag.name}</span>)}
+        <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-[9px] font-mono uppercase text-on-surface-variant">
+          {story.tags.slice(0, 4).map(tag => <span key={tag.id} className="break-words">#{tag.name}</span>)}
         </div>
         <a href={story.sourceUrl} target="_blank" rel="noreferrer" className="shrink-0 text-[10px] font-bold uppercase text-primary hover:underline">Source</a>
       </div>
@@ -135,11 +135,11 @@ export function generateBroadsheetPages(
             <p className="font-mono text-[9px] font-bold uppercase tracking-[.18em] text-primary">{issue.volume} · Issue {issue.issueNumber}</p>
             <h2 className="font-headline-xl text-2xl md:text-3xl font-black leading-none">{pageTitle}</h2>
           </div>
-          <p className="max-w-[48%] text-right font-mono text-[9px] font-bold uppercase tracking-wider text-on-surface-variant">{domains.join(' · ')}</p>
+          <p className="max-w-[48%] break-words text-right font-mono text-[9px] font-bold uppercase tracking-wider text-on-surface-variant">{domains.join(' · ')}</p>
         </header>
 
         <BroadsheetPageScroll className="min-h-0 flex-1 pr-2">
-          <div className={`grid content-start gap-x-5 gap-y-1 ${stories.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
+          <div className={`grid content-start gap-4 ${stories.length === 1 ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
             {stories.map(story => <DenseStory key={story.id} story={story} wide={stories.length === 1} />)}
           </div>
         </BroadsheetPageScroll>
