@@ -54,6 +54,7 @@ next-env.d.ts
 *.log
 
 # Local tooling and operating-system files
+/.tmp-*
 /.idea/
 /.vscode/
 .DS_Store

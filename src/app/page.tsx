@@ -1,14 +1,11 @@
-import { prisma } from '@/lib/db';
-import MagazineReader from '@/components/MagazineReader';
-import Link from 'next/link';
+import type { Metadata } from "next";
+import LandingFlipbook from "@/components/LandingFlipbook";
 
-export const dynamic = 'force-dynamic';
+export const metadata: Metadata = {
+  title: "AgeOfAI — Read across technology",
+  description: "All of technology, mapped into a source-checked weekly magazine with a permanent searchable archive.",
+};
 
-export default async function Home() {
-  const issue = await prisma.issue.findFirst({
-    where: { isPublished: true, publishedAt: { lte: new Date() }, stories: { some: {} } },
-    orderBy: { publishedAt: 'desc' },
-    include: { stories: { include: { tags: true }, orderBy: { publishedAt: 'desc' } } },
-  });
-  return <main className="publication-main">{issue ? <MagazineReader issue={issue} stories={issue.stories} /> : <div className="edition-empty"><p className="eyebrow">AgeOfAI</p><h1>The next edition is taking shape.</h1><p>Explore the technology archive while we prepare the weekly edition.</p><Link href="/search">Browse all stories</Link></div>}</main>;
+export default function Home() {
+  return <LandingFlipbook />;
 }

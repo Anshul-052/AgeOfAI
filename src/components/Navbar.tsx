@@ -14,7 +14,7 @@ export default async function Navbar() {
       <Link href="/" prefetch={false} className="masthead-title" aria-label="AgeOfAI home">AgeOfAI<span className="masthead-period">.</span></Link>
     </header>
     <div className="masthead-navigation print:hidden">
-      <div className="masthead-nav"><nav aria-label="Main navigation"><Link href="/" prefetch={false}>Latest edition</Link><Link href="/search" prefetch={false}>All stories</Link><Link href="/issues" prefetch={false}>Past editions</Link><Link href="/bookmarks" prefetch={false}>Saved stories</Link></nav><SearchBar /></div>
+      <div className="masthead-nav"><nav aria-label="Main navigation"><Link href="/read" prefetch={false}>Latest edition</Link><Link href="/search" prefetch={false}>All stories</Link><Link href="/issues" prefetch={false}>Past editions</Link><Link href="/bookmarks" prefetch={false}>Saved stories</Link></nav><SearchBar /></div>
       <nav className="domain-rail" aria-label="Technology domains">{domains.map(d => <Link key={d.id} prefetch={false} href={`/topics/${encodeURIComponent(d.id)}`}>{d.label}</Link>)}</nav>
     </div>
   </>;

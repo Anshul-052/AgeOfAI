@@ -33,6 +33,7 @@ function copySupabaseState(source: NextResponse, target: NextResponse) {
 export async function proxy(request: NextRequest) {
   if (!isProtectedRequest(request)) {
     const path = request.nextUrl.pathname;
+    if (path === '/') return NextResponse.next();
     const isPublicAuthPath = isAuthenticationPage(path);
     const isReaderPage = (request.method === 'GET' || request.method === 'HEAD') && !path.startsWith('/api/');
     const config = getSupabasePublicConfig();
