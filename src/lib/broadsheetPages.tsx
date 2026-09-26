@@ -24,7 +24,9 @@ function paginateStories(stories: Story[]) {
   let pageWeight = 0;
 
   for (const story of stories) {
-    const storyWeight = wordCount(story.crux) + Math.ceil(wordCount(story.title) * 1.8) + 28;
+    // Artwork needs real vertical room. Count it during pagination so image
+    // cards do not make a page visually collide even before its own scroll.
+    const storyWeight = wordCount(story.crux) + Math.ceil(wordCount(story.title) * 1.8) + 28 + (story.imageUrl ? 190 : 0);
     if (page.length && (page.length >= 4 || pageWeight + storyWeight > 620)) {
       pages.push(page);
       page = [];
@@ -48,6 +50,11 @@ function DenseStory({ story, wide = false }: { story: Story; wide?: boolean }) {
       <h3 className={`${wide ? 'text-xl md:text-2xl' : 'text-base md:text-xl'} font-headline-md font-black leading-[1.12] break-words [overflow-wrap:anywhere]`}>
         {story.title}
       </h3>
+      {story.imageUrl && !story.videoUrl && (
+        <figure className={`relative mt-3 w-full overflow-hidden border border-primary/70 bg-secondary-container ${wide ? 'aspect-[2/1] max-h-64' : 'aspect-[16/9] max-h-52'}`}>
+          <Image src={story.imageUrl} alt="" fill sizes={wide ? "(min-width: 1024px) 45vw, 90vw" : "(min-width: 1024px) 22vw, 90vw"} className="object-cover" unoptimized />
+        </figure>
+      )}
       <div className={`mt-3 min-w-0 break-words text-left text-sm md:text-[15px] font-serif leading-[1.52] hyphens-auto [overflow-wrap:anywhere] ${wide ? 'md:columns-2 md:gap-8' : ''}`}>
         {paragraphs.map((paragraph, index) => <p key={index} className={index ? 'mt-2' : ''}>{paragraph}</p>)}
       </div>

@@ -32,6 +32,19 @@ const domainRows = [
 ];
 
 function MobileLanding() {
+  useEffect(() => {
+    const sections = Array.from(document.querySelectorAll<HTMLElement>('.mobile-reveal'));
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('is-visible');
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+    sections.forEach(section => observer.observe(section));
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <main className="mobile-landing">
       <nav className="mobile-landing-nav"><strong>AgeOfAI.</strong><Link href="/login?next=%2Fread" prefetch={false}>Sign in</Link></nav>

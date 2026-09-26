@@ -338,11 +338,13 @@
 
 /* Phone landing: a calm vertical editorial sequence. The desktop keeps the
    physical flipbook; small screens avoid page-curl geometry entirely. */
-.mobile-landing { min-height:100dvh; overflow:hidden; background:#090909; color:#f4efe2; }
+.mobile-landing { min-height:100dvh; overflow-x:clip; background:#090909; color:#f4efe2; }
+.mobile-landing,.mobile-landing * { box-sizing:border-box; }
 .mobile-landing-nav { position:sticky; top:0; z-index:50; display:flex; align-items:center; justify-content:space-between; height:3.25rem; padding:0 1rem; border-bottom:1px solid rgba(255,255,255,.18); background:rgba(9,9,9,.88); backdrop-filter:blur(14px); font:700 .72rem/1 'Archivo Narrow',sans-serif; letter-spacing:.09em; text-transform:uppercase; }
 .mobile-landing-nav strong { font:900 1.35rem/1 'Playfair Display',Georgia,serif; letter-spacing:-.05em; text-transform:none; }
 .mobile-landing-nav a { border:1px solid rgba(255,255,255,.55); padding:.55rem .8rem; }
-.mobile-landing-cover,.mobile-landing-sheet { position:relative; min-height:calc(100dvh - 3.25rem); padding:clamp(2rem,8vw,4rem) 1.25rem; display:flex; flex-direction:column; justify-content:center; border-bottom:1px solid rgba(255,255,255,.16); }
+.mobile-landing-cover,.mobile-landing-sheet { position:relative; isolation:isolate; width:100%; min-height:calc(100dvh - 3.25rem); padding:clamp(2rem,8vw,4rem) 1.25rem; display:flex; flex-direction:column; justify-content:center; overflow:hidden; border-bottom:1px solid rgba(255,255,255,.16); }
+.mobile-landing-cover > *,.mobile-landing-sheet > * { position:relative; z-index:1; min-width:0; max-width:100%; }
 .mobile-landing-cover { background:radial-gradient(circle at 75% 18%,rgba(150,20,20,.32),transparent 30%),linear-gradient(145deg,#050505,#151515); }
 .mobile-landing-cover::after { content:""; position:absolute; inset:8% -35% auto 28%; aspect-ratio:1; border:1px solid rgba(255,255,255,.14); border-radius:50%; animation:mobile-orbit 18s linear infinite; }
 .mobile-landing-cover h1 { position:relative; z-index:1; margin:.7rem 0 1.2rem; font:900 clamp(5.4rem,27vw,8rem)/.69 'Playfair Display',Georgia,serif; letter-spacing:-.09em; }
@@ -350,7 +352,7 @@
 .mobile-landing-cover > p:last-of-type { max-width:16rem; font:600 1.05rem/1.5 'Archivo Narrow',sans-serif; text-transform:uppercase; letter-spacing:.07em; }
 .mobile-landing-cover > a { position:absolute; bottom:1.4rem; right:1.3rem; width:2.7rem; height:2.7rem; display:grid; place-items:center; border:1px solid rgba(255,255,255,.45); border-radius:50%; animation:mobile-nudge 2.2s ease-in-out infinite; }
 .mobile-landing-sheet { min-height:88dvh; background:#f5f0e2; color:#161510; }
-.mobile-landing-sheet h2 { margin:.65rem 0 1.4rem; font:900 clamp(3.2rem,15vw,5rem)/.9 'Playfair Display',Georgia,serif; letter-spacing:-.06em; text-wrap:balance; }
+.mobile-landing-sheet h2 { margin:.65rem 0 1.4rem; font:900 clamp(2.7rem,13.5vw,4.6rem)/.94 'Playfair Display',Georgia,serif; letter-spacing:-.055em; overflow-wrap:anywhere; text-wrap:balance; }
 .mobile-landing-sheet > p:not(.landing-kicker),.mobile-founder > div:last-child > p:not(.landing-kicker) { max-width:36rem; font:1.05rem/1.55 'Source Serif 4',Georgia,serif; }
 .mobile-landing-sheet blockquote { margin-top:2rem; padding-top:1rem; border-top:2px solid currentColor; font:700 1.25rem/1.35 'Archivo Narrow',sans-serif; text-transform:uppercase; }
 .mobile-landing-dark { background:#121212; color:#f4efe2; }
@@ -365,12 +367,21 @@
 .mobile-founder > div:last-child { padding:2rem 1.25rem 3rem; }
 .mobile-landing-final { min-height:100dvh; background:radial-gradient(circle at 20% 80%,rgba(156,24,24,.3),transparent 35%),#080808; color:#f4efe2; }
 .mobile-landing-final a { margin-top:2rem; padding:1rem; border:1px solid currentColor; text-align:center; font:700 .78rem 'Archivo Narrow',sans-serif; letter-spacing:.09em; text-transform:uppercase; }
-.mobile-reveal { animation:mobile-rise both linear; animation-timeline:view(); animation-range:entry 5% cover 35%; }
-@keyframes mobile-rise { from { opacity:.25; transform:translateY(22px) } to { opacity:1; transform:none } }
+.mobile-reveal { opacity:.01; transform:translateY(12px); transition:opacity .55s ease,transform .55s cubic-bezier(.2,.7,.2,1); }
+.mobile-reveal.is-visible { opacity:1; transform:none; }
 @keyframes mobile-orbit { to { transform:rotate(360deg) } }
 @keyframes mobile-nudge { 50% { transform:translateY(6px) } }
 @media (min-width:820px) { .mobile-landing { display:none; } }
-@media (prefers-reduced-motion:reduce) { .mobile-reveal,.mobile-landing-cover::after,.mobile-landing-cover>a { animation:none; } }
+@media (max-width:420px) {
+  .mobile-landing-cover,.mobile-landing-sheet { padding-inline:1rem; }
+  .mobile-landing-cover h1 { font-size:clamp(4.8rem,25vw,6.5rem); }
+  .mobile-landing-sheet h2 { font-size:clamp(2.45rem,12vw,3.35rem); line-height:.97; }
+  .mobile-landing-sheet blockquote { font-size:1.05rem; }
+  .mobile-domain-list span { font-size:.62rem; }
+  .mobile-founder-image { height:52dvh; min-height:21rem; }
+  .mobile-founder > div:last-child { padding-inline:1rem; }
+}
+@media (prefers-reduced-motion:reduce) { .mobile-reveal { opacity:1; transform:none; transition:none; } .mobile-landing-cover::after,.mobile-landing-cover>a { animation:none; } }
 
 @layer utilities {
   /* Custom Broadsheet Newspaper Scrollbar */
