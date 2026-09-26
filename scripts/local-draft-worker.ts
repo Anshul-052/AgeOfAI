@@ -29,8 +29,9 @@ async function draftWithOllama(model: string, source: string, domainHint?: strin
   let candidateTokens = 0;
   let generationDurationMs = 0;
   let lastError: Error | null = null;
+  let best: ReturnType<typeof parseAndValidateDraft> | null = null;
 
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
     const response = await fetch(`${ollamaBaseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -40,7 +41,7 @@ async function draftWithOllama(model: string, source: string, domainHint?: strin
         think: false,
         format: 'json',
         messages: [{ role: 'user', content: prompt }],
-        options: { temperature: attempt === 1 ? 0.45 : 0.3, num_ctx: 8192, num_predict: 1100 },
+        options: { temperature: attempt === 1 ? 0.45 : 0.25, num_ctx: 8192, num_predict: 1400 },
       }),
       signal: AbortSignal.timeout(10 * 60 * 1000),
     });
@@ -51,24 +52,36 @@ async function draftWithOllama(model: string, source: string, domainHint?: strin
     generationDurationMs += result.eval_duration ? Math.round(result.eval_duration / 1_000_000) : 0;
     try {
       const validated = parseAndValidateDraft(result.message?.content || '', domainHint);
-      if (validated.wordCount < 80 && attempt === 1) {
-        lastError = new Error(`The first draft was only ${validated.wordCount} words and did not use the available evidence fully.`);
-        prompt = `${localDraftPrompt(source)}\n\nYour first draft was too thin to be useful. Rewrite it with fuller context and consequences, aiming for 120-180 words in 2-4 short paragraphs. Explain the mechanism or background in plain language, identify who is affected, and state the practical impact or uncertainty only when the source supports it. Do not pad, speculate, or invent facts. Return one JSON object without reasoning, markdown, or commentary.`;
+      if (!best || validated.wordCount > best.wordCount) best = validated;
+      if (best.wordCount < 90 && attempt < 4) {
+        lastError = new Error(`Draft pass ${attempt} produced only ${best.wordCount} words.`);
+        prompt = `${localDraftPrompt(source)}\n\nCURRENT DRAFT\n${JSON.stringify(best.draft)}\n\nThis is a completeness rewrite, not a summary. Produce a self-contained article of at least 100 words and normally 120-180 words. Preserve every supported fact from the current draft, then use the SOURCE MATERIAL to add distinct sentences covering background or mechanism, who is affected, practical consequences, and the next step or uncertainty. Use 2-4 real paragraphs. Do not repeat a fact in different words, pad, speculate, or invent anything. Return one JSON object only.`;
         continue;
       }
       return {
-        ...validated,
+        ...best,
         metrics: {
           promptTokens, candidateTokens, totalTokens: promptTokens + candidateTokens,
           totalDurationMs: Date.now() - startedAt,
           generationDurationMs: generationDurationMs || null,
           rewriteUsed: attempt > 1,
+          rewritePasses: attempt - 1,
         },
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       prompt = `${localDraftPrompt(source)}\n\nYour previous attempt failed validation: ${lastError.message} Rewrite it as a complete, source-grounded article and return one JSON object. Do not include reasoning, markdown, or commentary.`;
     }
+  }
+  if (best) {
+    return {
+      ...best,
+      metrics: {
+        promptTokens, candidateTokens, totalTokens: promptTokens + candidateTokens,
+        totalDurationMs: Date.now() - startedAt, generationDurationMs: generationDurationMs || null,
+        rewriteUsed: true, rewritePasses: 3,
+      },
+    };
   }
   throw lastError || new Error('The local model did not return a valid draft.');
 }

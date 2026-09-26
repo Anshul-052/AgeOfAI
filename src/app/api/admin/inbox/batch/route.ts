@@ -21,8 +21,8 @@ export async function POST(request: Request) {
       const preference = isDraftPreference(body.modelPreference) ? body.modelPreference : 'auto';
       const selected = await prisma.ingestedCandidate.findMany({ where: { id: { in: candidateIds } } });
       if (selected.length !== candidateIds.length) return NextResponse.json({ error: 'One or more selected stories no longer exist. Refresh the inbox.' }, { status: 404 });
-      const candidates = selected.filter(candidate => candidate.status === 'pending' || candidate.status === 'failed');
-      if (!candidates.length) return NextResponse.json({ error: 'Select pending or failed stories to queue.' }, { status: 409 });
+      const candidates = selected.filter(candidate => ['pending', 'failed', 'drafted'].includes(candidate.status));
+      if (!candidates.length) return NextResponse.json({ error: 'Select pending, failed, or drafted stories to queue.' }, { status: 409 });
       const requestedAt = new Date();
       const decisions = candidates.map(candidate => ({ candidate, decision: routeDraft(candidate, preference) }));
       await prisma.$transaction(decisions.map(({ candidate, decision }) => prisma.ingestedCandidate.update({

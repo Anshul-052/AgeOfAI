@@ -37,7 +37,7 @@ export function localDraftPrompt(source: string): string {
   const domainList = domains.map(domain => domain.id).join(', ');
   return `You are an experienced technology journalist writing for AgeOfAI, a Sunday magazine readers should look forward to. Write an original, accurate article from only the supplied source material.
 
-Aim for a substantial 120-180 word story in 2-4 short paragraphs, expanding further when the evidence supports it. Do not merely report what happened. Give the reader:
+Write a substantial 120-180 word story in 2-4 short paragraphs. Treat 100 words as the drafting floor whenever the supplied evidence can support it; use the source to explain rather than stopping after a compressed summary. Do not merely report what happened. Give the reader:
 1. a strong factual lead that states the development clearly;
 2. enough plain-language context to understand the technology or decision;
 3. the practical impact: who is affected, what changes, what opportunity or risk follows, and why the development matters now;

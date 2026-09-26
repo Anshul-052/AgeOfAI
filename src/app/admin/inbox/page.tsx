@@ -95,9 +95,9 @@ export default function AdminInboxPage() {
   };
 
   const runBatch = async (action: 'queue-draft' | 'add-to-issue') => {
-    const eligible = selectedIds.filter(id => candidates.some(candidate => candidate.id === id && (action === 'queue-draft' ? ['pending', 'failed'].includes(candidate.status) : candidate.status === 'drafted')));
+    const eligible = selectedIds.filter(id => candidates.some(candidate => candidate.id === id && (action === 'queue-draft' ? ['pending', 'failed', 'drafted'].includes(candidate.status) : candidate.status === 'drafted')));
     if (!eligible.length) {
-      setError(action === 'queue-draft' ? 'Select at least one pending or failed story.' : 'Select at least one drafted story.');
+      setError(action === 'queue-draft' ? 'Select at least one pending, failed, or drafted story.' : 'Select at least one drafted story.');
       return;
     }
     if (action === 'add-to-issue' && !issueId) {
@@ -376,12 +376,10 @@ export default function AdminInboxPage() {
                 {item.status === 'drafting' && <span className="text-xs text-amber-700 dark:text-amber-300 py-1">The local editor is drafting this story.</span>}
 
                 {item.status === 'drafted' && (
-                  <button
-                    onClick={() => openReviewModal(item)}
-                    className="bg-emerald-600 text-white text-xs font-label-caps uppercase px-3 py-1.5 hover:bg-emerald-700"
-                  >
-                    Review and add story
-                  </button>
+                  <>
+                    <button onClick={() => openReviewModal(item)} className="bg-emerald-600 text-white text-xs font-label-caps uppercase px-3 py-1.5 hover:bg-emerald-700">Review and add story</button>
+                    <span className="text-xs text-on-surface-variant py-1">Select and queue again to rewrite a thin draft.</span>
+                  </>
                 )}
 
                 {item.status === 'published' && (
