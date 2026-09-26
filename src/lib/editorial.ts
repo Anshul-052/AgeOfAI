@@ -66,6 +66,19 @@ export async function publishIssue(db: PrismaClient, issueId: string) {
       data: { isPublished: true, publishedAt: new Date() },
     });
     if (claimed.count !== 1) throw new EditorialError('The issue publication state changed. Refresh and try again.', 409);
+    if (!draft.coverImageUrl) {
+      const leadWithImage = await tx.story.findFirst({
+        where: { issueId, imageUrl: { not: null } },
+        orderBy: [{ publishedAt: 'desc' }],
+        select: { title: true, imageUrl: true },
+      });
+      if (leadWithImage?.imageUrl) {
+        await tx.issue.update({
+          where: { id: issueId },
+          data: { coverImageUrl: leadWithImage.imageUrl, coverImagePrompt: leadWithImage.title },
+        });
+      }
+    }
     return tx.issue.findUniqueOrThrow({ where: { id: issueId } });
   });
 }

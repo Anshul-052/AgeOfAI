@@ -68,9 +68,10 @@ test('an issue remains private until an admin publication action succeeds', asyn
     const editorialDb = db as unknown as PrismaClient;
     await assert.rejects(publishIssue(editorialDb, draft.id), (e: unknown) => e instanceof EditorialError && e.status === 400);
     assert.equal((await db.issue.findUniqueOrThrow({ where: { id: draft.id } })).isPublished, false);
-    await db.story.create({ data: { title: 'Reviewed report', crux: 'Detailed report.', sourceUrl: 'https://example.com/report', domain: 'Research', issueId: draft.id, publishedAt: new Date() } });
+    await db.story.create({ data: { title: 'Reviewed report', crux: 'Detailed report.', sourceUrl: 'https://example.com/report', imageUrl: 'https://example.com/report.jpg', domain: 'Research', issueId: draft.id, publishedAt: new Date() } });
     const published = await publishIssue(editorialDb, draft.id);
     assert.equal(published.isPublished, true);
+    assert.equal(published.coverImageUrl, 'https://example.com/report.jpg');
     await assert.rejects(publishIssue(editorialDb, draft.id), (e: unknown) => e instanceof EditorialError && e.status === 409);
   } finally { await db.$disconnect(); }
 });

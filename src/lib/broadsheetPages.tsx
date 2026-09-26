@@ -78,6 +78,8 @@ export function generateBroadsheetPages(
     new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime()
   );
   const lead = ordered[0];
+  const coverImageUrl = issue.coverImageUrl || lead?.imageUrl || null;
+  const coverCaption = issue.coverImagePrompt || lead?.title || 'Issue cover';
   const storyPages = paginateStories(ordered);
   const issueDate = new Date(issue.publishedAt).toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -95,10 +97,10 @@ export function generateBroadsheetPages(
       <BroadsheetPageScroll className="min-h-0 flex-1">
       <div className="grid min-h-full grid-cols-5 gap-4 py-4">
         <section className="col-span-3 flex min-h-[32rem] flex-col border-r border-outline-variant pr-4">
-          {issue.coverImageUrl ? (
+          {coverImageUrl ? (
             <div className="relative min-h-0 flex-1 overflow-hidden border border-primary halftone">
-              <Image src={issue.coverImageUrl} alt="Issue cover" fill className="object-cover" unoptimized />
-              <div className="absolute inset-x-0 bottom-0 bg-black/85 p-2 text-center text-xs font-serif text-white">{issue.coverImagePrompt || lead?.title}</div>
+              <Image src={coverImageUrl} alt={coverCaption} fill className="object-cover" unoptimized />
+              <div className="absolute inset-x-0 bottom-0 bg-black/85 p-2 text-center text-xs font-serif text-white">{coverCaption}</div>
             </div>
           ) : lead ? (
             <div className="flex h-full flex-col justify-center">
@@ -114,7 +116,7 @@ export function generateBroadsheetPages(
         <aside className="col-span-2 min-w-0">
           <p className="border-b-2 border-primary pb-1 font-label-caps text-xs font-bold uppercase tracking-widest">Inside this issue</p>
           <div className="divide-y divide-outline-variant">
-            {ordered.slice(issue.coverImageUrl ? 0 : 1, issue.coverImageUrl ? 6 : 7).map((story, index) => (
+            {ordered.slice(coverImageUrl ? 0 : 1, coverImageUrl ? 6 : 7).map((story, index) => (
               <div key={story.id} className="py-2.5">
                 <span className="font-mono text-[9px] font-bold uppercase text-primary">{story.domain}</span>
                 <h3 className="font-headline-md text-sm md:text-base font-bold leading-tight">{story.title}</h3>
