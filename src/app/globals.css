@@ -347,7 +347,7 @@
 .mobile-landing-cover > *,.mobile-landing-sheet > * { position:relative; z-index:1; min-width:0; max-width:100%; }
 .mobile-landing-cover { background:radial-gradient(circle at 75% 18%,rgba(150,20,20,.32),transparent 30%),linear-gradient(145deg,#050505,#151515); }
 .mobile-landing-cover::after { content:""; position:absolute; inset:8% -35% auto 28%; aspect-ratio:1; border:1px solid rgba(255,255,255,.14); border-radius:50%; animation:mobile-orbit 18s linear infinite; }
-.mobile-landing-cover h1 { position:relative; z-index:1; margin:.7rem 0 1.2rem; font:900 clamp(5.4rem,27vw,8rem)/.69 'Playfair Display',Georgia,serif; letter-spacing:-.09em; }
+.mobile-landing-cover h1 { position:relative; z-index:1; margin:.7rem 0 1.2rem; font:900 clamp(5.1rem,25vw,7.5rem)/1 'Playfair Display',Georgia,serif; letter-spacing:-.065em; }
 .mobile-landing-cover h1 span { color:#c52626; }
 .mobile-landing-cover > p:last-of-type { max-width:16rem; font:600 1.05rem/1.5 'Archivo Narrow',sans-serif; text-transform:uppercase; letter-spacing:.07em; }
 .mobile-landing-cover > a { position:absolute; bottom:1.4rem; right:1.3rem; width:2.7rem; height:2.7rem; display:grid; place-items:center; border:1px solid rgba(255,255,255,.45); border-radius:50%; animation:mobile-nudge 2.2s ease-in-out infinite; }
@@ -374,7 +374,7 @@
 @media (min-width:820px) { .mobile-landing { display:none; } }
 @media (max-width:420px) {
   .mobile-landing-cover,.mobile-landing-sheet { padding-inline:1rem; }
-  .mobile-landing-cover h1 { font-size:clamp(4.8rem,25vw,6.5rem); }
+  .mobile-landing-cover h1 { font-size:clamp(4.55rem,23vw,6.1rem); line-height:1; letter-spacing:-.055em; }
   .mobile-landing-sheet h2 { font-size:clamp(2.45rem,12vw,3.35rem); line-height:.97; }
   .mobile-landing-sheet blockquote { font-size:1.05rem; }
   .mobile-domain-list span { font-size:.62rem; }
