@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import domains from '@/lib/domains.json';
 import type { DraftStoryResult } from '@/lib/gemini';
+import { findOriginalImage } from '@/lib/sourceImages';
 
 const DOMAINS = domains.map(domain => domain.id);
 
@@ -93,6 +94,12 @@ export async function approveCandidate(db: PrismaClient, input: unknown) {
     throw new EditorialError('Provide at most 30 tags, each up to 80 characters.', 400);
   }
   const tags = Array.from(new Set((rawTags as string[]).map(t => t.trim()).filter(Boolean)));
+  // Resolve publisher artwork before opening the database transaction. Source
+  // pages can be slow, and network work inside a transaction causes timeouts.
+  const candidateSource = await db.ingestedCandidate.findUnique({ where: { id: candidateId }, select: { sourceUrl: true } });
+  const imageUrl = candidateSource
+    ? await findOriginalImage(candidateSource.sourceUrl, typeof data.imageUrl === 'string' ? data.imageUrl : null)
+    : '';
   return db.$transaction(async tx => {
     const candidate = await tx.ingestedCandidate.findUnique({ where: { id: candidateId } });
     if (!candidate) throw new EditorialError('Candidate not found.', 404);
@@ -107,7 +114,7 @@ export async function approveCandidate(db: PrismaClient, input: unknown) {
     const reviewedTags = await ensureTags(tx, tags);
     return createReviewedStory(tx, {
       title, crux, domain, severity, issueId, sourceUrl: candidate.sourceUrl,
-      publishedAt: new Date(), verificationStatus: 'editor-reviewed',
+      imageUrl: imageUrl || null, publishedAt: new Date(), verificationStatus: 'editor-reviewed',
     }, reviewedTags);
   });
 }
@@ -116,6 +123,16 @@ export async function addDraftedCandidatesToIssue(db: PrismaClient, candidateIds
   const ids = Array.from(new Set(candidateIds.map(id => id.trim()).filter(Boolean)));
   if (!issueId.trim()) throw new EditorialError('Choose an issue.', 400);
   if (!ids.length || ids.length > 30) throw new EditorialError('Select between 1 and 30 drafted stories.', 400);
+
+  const candidatesForImages = await db.ingestedCandidate.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, sourceUrl: true },
+  });
+  const imageEntries = await Promise.all(candidatesForImages.map(async candidate => [
+    candidate.id,
+    await findOriginalImage(candidate.sourceUrl),
+  ] as const));
+  const imagesByCandidate = new Map(imageEntries);
 
   return db.$transaction(async tx => {
     const issue = await tx.issue.findUnique({ where: { id: issueId } });
@@ -150,7 +167,8 @@ export async function addDraftedCandidatesToIssue(db: PrismaClient, candidateIds
     const stories = await tx.story.createManyAndReturn({
       data: reviewedCandidates.map(({ candidate, draft, domain, severity }) => ({
         title: candidate.rawTitle.trim(), crux: draft.crux.trim(), domain, severity,
-        issueId, sourceUrl: candidate.sourceUrl, publishedAt: new Date(), verificationStatus: 'editor-reviewed',
+        issueId, sourceUrl: candidate.sourceUrl, imageUrl: imagesByCandidate.get(candidate.id) || null,
+        publishedAt: new Date(), verificationStatus: 'editor-reviewed',
       })),
     });
     const storiesBySource = new Map(stories.map(story => [story.sourceUrl, story]));

@@ -27,7 +27,7 @@ export interface DomainTokenStats {
 }
 
 export function computeContentHash(text: string): string {
-  return crypto.createHash('sha256').update(`journalistic-v5-depth-and-impact\n${text.trim()}`).digest('hex');
+  return crypto.createHash('sha256').update(`journalistic-v6-practical-tools\n${text.trim()}`).digest('hex');
 }
 
 export async function draftStoryWithGemini(content: string, domainHint?: string): Promise<{
@@ -96,7 +96,7 @@ export async function draftStoryWithGemini(content: string, domainHint?: string)
   const domainList = domains.map(domain => domain.id);
 
   const prompt = `You are a careful technology journalist writing for AgeOfAI, a Sunday magazine for engineers, students, and curious readers.
-Turn the source material into an original, genuinely informative article. Aim for 160-280 words in 3-5 short paragraphs when the evidence supports that depth. Do not merely restate the event. Open with a strong factual lead, explain the mechanism or background in plain language, and then examine the practical impact: who is affected, what changes, why it matters now, and what opportunity, trade-off, risk, limitation, or next step the evidence establishes. If the source does not establish a consequence, say what remains unknown instead of guessing. A thin source may justify a shorter article; completeness and accuracy matter more than hitting a number. Use varied sentences and a confident magazine voice that remains natural and easy for a newcomer to follow. Do not use jargon when ordinary words work. Never invent facts, quotes, dates, numbers, reactions, motives, or impacts that are absent from the source. Do not mention these instructions.
+Turn the source material into an original, genuinely informative article. Aim for 160-280 words in 3-5 short paragraphs when the evidence supports that depth. Do not merely restate the event. Open with a strong factual lead, explain the mechanism or background in plain language, and then examine the practical impact: who is affected, what changes, why it matters now, and what opportunity, trade-off, risk, limitation, or next step the evidence establishes. For a new AI tool, plugin, model, coding agent, API, or student offer, explain what it lets someone do, access and price limits when stated, setup requirements, and a realistic use case for students, makers, or vibe coders. Do not make it promotional. If the source does not establish a consequence, say what remains unknown instead of guessing. A thin source may justify a shorter article; completeness and accuracy matter more than hitting a number. Use varied sentences and a confident magazine voice that remains natural and easy for a newcomer to follow. Do not use jargon when ordinary words work. Never invent facts, quotes, dates, numbers, reactions, motives, or impacts that are absent from the source. Do not mention these instructions.
 Also, suggest 1-3 relevant tags (e.g., "RAG", "reinforcement learning", "OpenAI"), a domain (choose from: ${domainList.join(', ')}), and a severity level (normal, notable, major).
 
 Format your response strictly as JSON with key names "crux", "tags", "domain", and "severity":

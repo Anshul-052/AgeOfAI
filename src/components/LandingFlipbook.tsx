@@ -31,6 +31,44 @@ const domainRows = [
   ["Networks & telecom", "Startups & funding", "Policy & society"],
 ];
 
+function MobileLanding() {
+  return (
+    <main className="mobile-landing">
+      <nav className="mobile-landing-nav"><strong>AgeOfAI.</strong><Link href="/login?next=%2Fread" prefetch={false}>Sign in</Link></nav>
+      <section className="mobile-landing-cover mobile-reveal">
+        <p className="landing-kicker">A weekly map of technology</p>
+        <h1>Age<br />Of<br />AI<span>.</span></h1>
+        <p>All of tech. One issue. Zero feed fatigue.</p>
+        <a href="#mobile-story" aria-label="Continue reading">↓</a>
+      </section>
+      <section id="mobile-story" className="mobile-landing-sheet mobile-reveal">
+        <p className="landing-kicker">The internet has updates. You need perspective.</p>
+        <h2>Tech moves everywhere.<br /><em>We draw the map.</em></h2>
+        <p>AgeOfAI turns the week’s meaningful developments into one deliberate magazine: clear reporting, useful context, and a permanent archive for everything worth finding again.</p>
+        <blockquote>Know what changed. Understand why it matters. Find it when you need it.</blockquote>
+      </section>
+      <section className="mobile-landing-sheet mobile-landing-dark mobile-reveal">
+        <p className="landing-kicker">The whole map</p><h2>Across technology.</h2>
+        <div className="mobile-domain-list">{domainRows.flat().map(domain => <span key={domain}>{domain}</span>)}</div>
+      </section>
+      <section className="mobile-landing-sheet mobile-reveal">
+        <div className="mobile-brand-image"><Image src="/brand/techluna-logo.webp" alt="TechLuna logo" fill sizes="70vw" /></div>
+        <p className="landing-kicker">The small startup behind the big curiosity</p><h2>TechLuna</h2>
+        <p>It started because Anshul got bored, became curious, and kept asking what AI could solve before anyone had named the problem. No garage mythology. Just useful experiments that occasionally forget to stay small.</p>
+      </section>
+      <section className="mobile-landing-sheet mobile-founder mobile-reveal">
+        <div className="mobile-founder-image"><Image src="/brand/anshul-ramesh-nagpure.webp" alt="Anshul Ramesh Nagpure" fill sizes="100vw" /></div>
+        <div><p className="landing-kicker">Anshul Ramesh Nagpure</p><h2>Curiosity is the full-time job.</h2><p>Third-year B.Tech student at VIT Pune. Lyricist, poet, producer, rapper, writer, AI enthusiast, and collector of questions. TechLuna is the plan to turn a few of those questions into a company.</p></div>
+      </section>
+      <section className="mobile-landing-sheet mobile-landing-final mobile-reveal">
+        <p className="landing-kicker">Every Sunday</p><h2>Stop chasing the feed.<br /><em>Start reading.</em></h2>
+        <p>One account. Every issue. Every domain. Every story worth finding again.</p>
+        <Link href="/read" prefetch={false}>Enter AgeOfAI</Link>
+      </section>
+    </main>
+  );
+}
+
 export default function LandingFlipbook() {
   const stageRef = useRef<HTMLElement>(null);
   const bookRef = useRef<FlipBookHandle | null>(null);
@@ -110,6 +148,8 @@ export default function LandingFlipbook() {
       turn(deltaY < 0 ? "next" : "previous");
     }
   };
+
+  if (isPortrait) return <MobileLanding />;
 
   return (
     <main
@@ -274,11 +314,6 @@ export default function LandingFlipbook() {
           </section>
         </HTMLFlipBook>
       </div>
-
-      {isPortrait && <div className="mobile-page-turn-zones" aria-label="Page turn controls">
-        <button type="button" onClick={() => turn("previous")} disabled={currentPage === 0} aria-label="Turn to previous page">‹</button>
-        <button type="button" onClick={() => turn("next")} disabled={currentPage >= pageNames.length - 1} aria-label="Turn to next page">›</button>
-      </div>}
 
       <aside className="landing-controls" aria-label="Landing page controls" onClick={stopFlip}>
         <button type="button" onClick={() => turn("previous")} disabled={currentPage === 0} aria-label="Previous page">↑</button>

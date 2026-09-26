@@ -25,6 +25,7 @@ The inbox refreshes queued work automatically. Each card shows the assigned prov
 ## What it does
 
 1. Scans recent feeds and, when enabled, search results for every domain in `src/lib/domains.json`.
+   The regular inbox scanner also watches official GitHub Changelog, VS Code, Google Developers and Hugging Face feeds for AI tools, plugins, coding agents, APIs and student-useful releases. Newly created AI repositories are ranked by recency instead of lifetime popularity.
 2. Removes promotional posts and near-duplicate headlines, then ranks candidates by freshness and source quality.
 3. Searches feeds and Google News RSS for independent corroboration. When Tavily is configured, it adds deeper current-web verification. A story always needs at least two different publisher domains.
 4. Gives the drafting model numbered evidence only. The model must return a detailed 600–1,000 word report, tags, severity, uncertainties, and a claim-to-source ledger.
@@ -33,7 +34,7 @@ The inbox refreshes queued work automatically. Each card shows the assigned prov
 7. Saves the evidence trail on every story so readers can inspect sources and limitations.
 8. Uses a unique Sunday edition key so a scheduler retry cannot create the same week twice.
 9. Requires the administrator to review the draft and press the final publish button before readers can see it.
-10. Uses images supplied by the original publisher page or feed. If a source image cannot be verified, the story is shown without an image.
+10. Resolves images from the original publisher page before a reviewed local draft becomes a story. If a source image cannot be verified, the story is shown without an image rather than substituting generated or stock artwork.
 
 Source checking reduces errors but cannot prove that every source is correct. The public story page describes the process as “AI source-checked,” not “factually guaranteed.”
 

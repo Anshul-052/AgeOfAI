@@ -130,6 +130,13 @@ function sourceQuality(publisher: string): number {
   return 0;
 }
 
+function audiencePriority(title: string, summary: string): number {
+  const value = `${title} ${summary}`;
+  const releases = /\b(launch(?:es|ed)?|release(?:s|d)?|introduc(?:e|es|ed|ing)|available|preview|plugin|extension|mcp|agent|copilot|sdk|api)\b/i.test(value);
+  const audience = /\b(student|education|learn|developer|coding|programmer|maker|free tier|open.source|vibe cod(?:e|er|ing))\b/i.test(value);
+  return (releases ? 2 : 0) + (audience ? 2 : 0);
+}
+
 function relevant(candidate: Candidate): boolean {
   const domain = domains.find(item => item.id === candidate.domain);
   if (!domain) return false;
@@ -171,7 +178,7 @@ function parseFeed(body: string, domain: string): Candidate[] {
     const sourceUrl = source && typeof source === 'object' ? safeUrl(source['@_url']) : '';
     const publisher = sourceUrl ? host(sourceUrl) : clean(source) || host(url);
     const age = (Date.now() - publishedAt.getTime()) / 86_400_000;
-    const score = Math.max(0, 6 - age / 2) + Math.min(3, summary.length / 400) + (url.startsWith('https://') ? 1 : 0) + sourceQuality(publisher);
+    const score = Math.max(0, 6 - age / 2) + Math.min(3, summary.length / 400) + (url.startsWith('https://') ? 1 : 0) + sourceQuality(publisher) + audiencePriority(title, summary);
     return { domain, title, summary, url, publisher, publishedAt, score, imageUrl: feedImage(item) || undefined };
   }).filter(item => item.title.length >= 12 && item.summary.length >= 30 && item.url && !Number.isNaN(item.publishedAt.getTime()) && item.publishedAt >= new Date(Date.now() - days * 86_400_000)).filter(relevant);
 }
@@ -307,6 +314,7 @@ async function draftCandidate(candidate: Candidate): Promise<{ draft: Draft; sou
 Domain: ${domain.id}. Focus: ${domain.description}.
 Required JSON: {"title":"accurate headline","crux":"A source-adaptive article, usually 220-450 words in 4-7 paragraphs. Lead with what changed; explain the technical mechanism or context; examine who is affected, the practical consequences, trade-offs, limitations, and what remains uncertain.","tags":["2-8 specific terms"],"severity":"normal|notable|major","claims":[{"text":"each factual claim","sourceIds":["S1","S2"]}],"uncertainties":["unresolved limitation"]}.
 Every factual statement in the crux must be represented in the claim ledger. Prefer precise, restrained language with enough explanation for a newcomer. Do not pad the article, speculate beyond the evidence, invent an impact, or call a story breaking unless severity is major. If the sources are sparse, write the best complete shorter account they support.
+For AI tools, plugins, coding agents, models, APIs, or student offers, explicitly cover practical use, access or pricing limits when known, setup requirements, and relevance to students, makers, and vibe coders. Keep the assessment independent rather than promotional.
 
 EVIDENCE\n${evidence}`);
   return { draft: validateDraft(result.value, sources), sources, modelUsed: result.modelUsed };

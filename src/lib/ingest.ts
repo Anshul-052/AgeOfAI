@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db';
 import crypto from 'crypto';
 
 export interface IngestedItem {
-  source: 'arxiv' | 'huggingface' | 'github' | 'hackernews' | 'producthunt' | 'gaming-rss' | 'crypto-rss' | 'mobile-rss' | 'hardware-rss';
+  source: 'arxiv' | 'huggingface' | 'github' | 'hackernews' | 'producthunt' | 'ai-tools-rss' | 'gaming-rss' | 'crypto-rss' | 'mobile-rss' | 'hardware-rss';
   rawTitle: string;
   rawContent: string;
   sourceUrl: string;
@@ -32,6 +32,18 @@ function parseRSSFeed(xmlText: string): { title: string; content: string; link: 
     if (title && content) {
       items.push({ title, content, link });
     }
+  }
+  const entryRegex = /<entry\b[^>]*>([\s\S]*?)<\/entry>/g;
+  while ((match = entryRegex.exec(xmlText)) !== null) {
+    const entryXml = match[1];
+    const read = (name: string) => {
+      const found = entryXml.match(new RegExp(`<${name}\\b[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${name}>`, 'i'));
+      return (found?.[1] || '').replace(/<[^>]*>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+    };
+    const href = entryXml.match(/<link\b[^>]*href=["']([^"']+)["'][^>]*>/i)?.[1] || read('id');
+    const title = read('title');
+    const content = read('summary') || read('content');
+    if (title && content && href) items.push({ title, content, link: href });
   }
   return items;
 }
@@ -109,8 +121,9 @@ export async function fetchHuggingFaceCandidates(): Promise<IngestedItem[]> {
 
 export async function fetchGitHubCandidates(): Promise<IngestedItem[]> {
   try {
-    const url = 'https://api.github.com/search/repositories?q=topic:machine-learning+topic:artificial-intelligence&sort=stars&order=desc&per_page=15';
-    const res = await fetch(url, { 
+    const since = new Date(Date.now() - 10 * 86_400_000).toISOString().slice(0, 10);
+    const url = `https://api.github.com/search/repositories?q=created:%3E%3D${since}+topic:artificial-intelligence&sort=stars&order=desc&per_page=20`;
+    const res = await fetch(url, {
       headers: { 
         'User-Agent': 'AgeOfAI/1.0',
         'Accept': 'application/vnd.github.v3+json'
@@ -125,7 +138,7 @@ export async function fetchGitHubCandidates(): Promise<IngestedItem[]> {
     if (Array.isArray(data.items)) {
       for (const repo of data.items) {
         const rawTitle = repo.full_name || repo.name;
-        const rawContent = repo.description || `Popular AI Repository: ${repo.full_name} (${repo.stargazers_count} stars). Primary language: ${repo.language || 'Python'}.`;
+        const rawContent = `${repo.description || 'New AI project.'} Released recently on GitHub with ${repo.stargazers_count} stars. Primary language: ${repo.language || 'not specified'}. Evaluate its practical value for students, makers, and AI-assisted developers.`;
         const sourceUrl = repo.html_url;
 
         if (rawTitle) {
@@ -144,6 +157,32 @@ export async function fetchGitHubCandidates(): Promise<IngestedItem[]> {
     console.error('GitHub fetch error:', error);
     return [];
   }
+}
+
+export async function fetchAiToolReleaseCandidates(): Promise<IngestedItem[]> {
+  const feeds = [
+    'https://github.blog/changelog/feed/',
+    'https://code.visualstudio.com/feed.xml',
+    'https://developers.googleblog.com/feeds/posts/default',
+    'https://huggingface.co/blog/feed.xml',
+  ];
+  const signal = /\b(ai|artificial intelligence|agent|copilot|model|llm|plugin|extension|mcp|developer tool|coding|code|student|education|api|sdk)\b/i;
+  const items: IngestedItem[] = [];
+  await Promise.all(feeds.map(async feedUrl => {
+    try {
+      const res = await fetch(feedUrl, { headers: { 'User-Agent': 'AgeOfAI/1.0' }, next: { revalidate: 1800 } });
+      if (!res.ok) return;
+      for (const item of parseRSSFeed(await res.text()).slice(0, 30)) {
+        if (!signal.test(`${item.title} ${item.content}`)) continue;
+        items.push({
+          source: 'ai-tools-rss', rawTitle: item.title,
+          rawContent: `${item.content} Editorial priority: determine what this release enables, its availability or cost when stated, and whether it is useful to students, makers, or vibe coders.`,
+          sourceUrl: item.link, suggestedDomain: 'Tools',
+        });
+      }
+    } catch (error) { console.error(`AI tools feed ${feedUrl} error:`, error); }
+  }));
+  return items;
 }
 
 export async function fetchHackerNewsCandidates(): Promise<IngestedItem[]> {
@@ -442,6 +481,7 @@ export async function runIngestionPipeline() {
     fetchGitHubCandidates(),
     fetchHackerNewsCandidates(),
     fetchProductHuntCandidates(),
+    fetchAiToolReleaseCandidates(),
     fetchGamingRSSCandidates(),
     fetchCryptoRSSCandidates(),
     fetchMobileRSSCandidates(),
@@ -449,7 +489,7 @@ export async function runIngestionPipeline() {
   ]);
 
   const allCandidates: IngestedItem[] = [];
-  const sourceNames = ['arxiv', 'huggingface', 'github', 'hackernews', 'producthunt', 'gaming-rss', 'crypto-rss', 'mobile-rss', 'hardware-rss'];
+  const sourceNames = ['arxiv', 'huggingface', 'github', 'hackernews', 'producthunt', 'ai-tools-rss', 'gaming-rss', 'crypto-rss', 'mobile-rss', 'hardware-rss'];
 
   results.forEach((result, index) => {
     if (result.status === 'fulfilled') {

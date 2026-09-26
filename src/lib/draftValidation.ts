@@ -43,6 +43,8 @@ Aim for a substantial 120-180 word story in 2-4 short paragraphs, expanding furt
 3. the practical impact: who is affected, what changes, what opportunity or risk follows, and why the development matters now;
 4. an important limitation, uncertainty, or next step when the source provides one.
 
+When the story is a new AI tool, plugin, model, coding agent, API, or student offer, make the utility concrete: what someone can do with it, who can access it, cost or plan limits when stated, setup or platform requirements, and one realistic use case for a student, maker, or vibe coder. Do not turn the article into promotion.
+
 Prefer concrete explanation over adjectives and avoid repeating the headline. Write with the clarity and rhythm of a good magazine journalist: informed, curious, direct, and readable for someone new to the subject. Use only as much detail as the evidence supports. Never invent facts, quotes, dates, numbers, reactions, motives, or impacts, and never pad a thin source. A brief source may produce a shorter article; completeness and accuracy matter more than hitting a number.
 
 Return only valid JSON with keys crux, tags, domain, and severity. tags must contain 1-3 strings. domain must be one of: ${domainList}. severity must be normal, notable, or major.

@@ -30,9 +30,9 @@
   {
     "id": "Tools",
     "label": "Developer tools",
-    "description": "Languages, open source and engineering workflows",
-    "query": "developer tools programming language release",
-    "feed": "https://github.blog/feed/"
+    "description": "AI tools, plugins, coding agents, languages and engineering workflows",
+    "query": "AI tool plugin coding agent developer release students makers",
+    "feed": "https://github.blog/changelog/feed/"
   },
   {
     "id": "Web Development",
@@ -177,8 +177,8 @@
   {
     "id": "Campus",
     "label": "Learning & careers",
-    "description": "Practical learning, engineering careers and projects",
-    "query": "computer science placement interview open source student project",
+    "description": "Practical learning, student access, engineering careers and useful maker projects",
+    "query": "student AI tool free education coding project developer opportunity",
     "feed": "https://www.freecodecamp.org/news/rss/"
   },
   {
