@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { prisma } from '../src/lib/db';
 import { draftStoryWithGemini } from '../src/lib/gemini';
-import { localDraftPrompt, parseAndValidateDraft } from '../src/lib/draftValidation';
+import { localDraftPrompt, parseAndValidateDraft, type ValidatedDraft } from '../src/lib/draftValidation';
 import { buildDraftingSource } from '../src/lib/sourceContent';
 
 interface OllamaResponse {
@@ -22,6 +22,23 @@ process.on('SIGTERM', () => { stopping = true; });
 
 const delay = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
+function parseCompletenessDraft(output: string, fallback: ValidatedDraft, domainHint?: string | null): ValidatedDraft {
+  const match = output.match(/\{[\s\S]*\}/);
+  const value = JSON.parse(match?.[0] || output) as Record<string, unknown>;
+  if (typeof value.crux === 'string' && value.crux.trim()) return parseAndValidateDraft(JSON.stringify(value), domainHint);
+  const sections = ['lead', 'background', 'mechanism', 'impact', 'outlook']
+    .map(key => typeof value[key] === 'string' ? value[key].trim() : '')
+    .filter(Boolean);
+  if (!sections.length) throw new Error('The completeness rewrite did not return article sections.');
+  const draft = {
+    crux: `${sections.slice(0, 2).join(' ')}\n\n${sections.slice(2).join(' ')}`,
+    tags: Array.isArray(value.tags) ? value.tags : fallback.draft.tags,
+    domain: typeof value.domain === 'string' ? value.domain : fallback.draft.domain,
+    severity: typeof value.severity === 'string' ? value.severity : fallback.draft.severity,
+  };
+  return parseAndValidateDraft(JSON.stringify(draft), domainHint);
+}
+
 async function draftWithOllama(model: string, source: string, domainHint?: string | null) {
   const startedAt = Date.now();
   let prompt = localDraftPrompt(source);
@@ -29,7 +46,7 @@ async function draftWithOllama(model: string, source: string, domainHint?: strin
   let candidateTokens = 0;
   let generationDurationMs = 0;
   let lastError: Error | null = null;
-  let best: ReturnType<typeof parseAndValidateDraft> | null = null;
+  let best: ValidatedDraft | null = null;
 
   for (let attempt = 1; attempt <= 4; attempt += 1) {
     const response = await fetch(`${ollamaBaseUrl}/api/chat`, {
@@ -51,11 +68,15 @@ async function draftWithOllama(model: string, source: string, domainHint?: strin
     candidateTokens += result.eval_count || 0;
     generationDurationMs += result.eval_duration ? Math.round(result.eval_duration / 1_000_000) : 0;
     try {
-      const validated = parseAndValidateDraft(result.message?.content || '', domainHint);
+      const validated: ValidatedDraft = best
+        ? parseCompletenessDraft(result.message?.content || '', best, domainHint)
+        : parseAndValidateDraft(result.message?.content || '', domainHint);
       if (!best || validated.wordCount > best.wordCount) best = validated;
-      if (best.wordCount < 90 && attempt < 4) {
-        lastError = new Error(`Draft pass ${attempt} produced only ${best.wordCount} words.`);
-        prompt = `${localDraftPrompt(source)}\n\nCURRENT DRAFT\n${JSON.stringify(best.draft)}\n\nThis is a completeness rewrite, not a summary. Produce a self-contained article of at least 100 words and normally 120-180 words. Preserve every supported fact from the current draft, then use the SOURCE MATERIAL to add distinct sentences covering background or mechanism, who is affected, practical consequences, and the next step or uncertainty. Use 2-4 real paragraphs. Do not repeat a fact in different words, pad, speculate, or invent anything. Return one JSON object only.`;
+      const strongest = best;
+      if (strongest.wordCount < 90) {
+        if (attempt === 4) break;
+        lastError = new Error(`Draft pass ${attempt} produced only ${strongest.wordCount} words.`);
+        prompt = `You are expanding a thin technology brief using only the supplied evidence. Do not summarize. Fill five distinct reporting sections, each with 25-45 words when the evidence supports it. Never repeat a point, speculate, or invent facts. If a detail is not established, use the outlook section to state what remains unknown.\n\nReturn exactly one JSON object with this schema:\n{"lead":"what happened and when","background":"context a newcomer needs","mechanism":"how the technology, decision, or event works","impact":"who is affected and the practical consequence","outlook":"next step, limitation, or unresolved question","tags":["1-3 tags"],"domain":"${strongest.draft.domain}","severity":"${strongest.draft.severity}"}\n\nCURRENT DRAFT\n${JSON.stringify(strongest.draft)}\n\nSOURCE EVIDENCE\n${source}`;
         continue;
       }
       return {
@@ -74,6 +95,28 @@ async function draftWithOllama(model: string, source: string, domainHint?: strin
     }
   }
   if (best) {
+    for (let supplement = 1; supplement <= 3 && best.wordCount < 90; supplement += 1) {
+      const response = await fetch(`${ollamaBaseUrl}/api/chat`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model, stream: false, think: false,
+          messages: [{ role: 'user', content: `Write exactly three new reporting sentences totaling 45-65 words for the article below. Use only facts or cautious limitations supported by SOURCE EVIDENCE. Cover missing context, mechanism, impact, or next step. Do not repeat any existing point. Return only the three plain-text sentences with no JSON, heading, markdown, or commentary.\n\nARTICLE\n${best.draft.crux}\n\nSOURCE EVIDENCE\n${source}` }],
+          options: { temperature: 0.2, num_ctx: 8192, num_predict: 500 },
+        }),
+        signal: AbortSignal.timeout(10 * 60 * 1000),
+      });
+      if (!response.ok) break;
+      const result = await response.json() as OllamaResponse;
+      promptTokens += result.prompt_eval_count || 0;
+      candidateTokens += result.eval_count || 0;
+      generationDurationMs += result.eval_duration ? Math.round(result.eval_duration / 1_000_000) : 0;
+      try {
+        const addition = (result.message?.content || '').replace(/^```(?:text)?|```$/g, '').trim();
+        if (!addition) continue;
+        const expanded = parseAndValidateDraft(JSON.stringify({ ...best.draft, crux: `${best.draft.crux}\n\n${addition}` }), domainHint);
+        if (expanded.wordCount > best.wordCount) best = expanded;
+      } catch { /* Keep the longest valid article and try another supplement. */ }
+    }
     return {
       ...best,
       metrics: {
