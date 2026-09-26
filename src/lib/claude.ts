@@ -5,8 +5,8 @@ const anthropic = new Anthropic({
 });
 
 export async function draftStory(content: string) {
-  const prompt = `You are an expert AI journalist writing for "AgeOfAI," a weekly magazine for engineering students. 
-Given the following raw text or article content, generate a concise, engaging summary (crux) of 2-3 paragraphs.
+  const prompt = `You are an expert technology journalist writing for AgeOfAI, a Sunday magazine for engineers, students, and curious readers.
+Turn the source into a clear, engaging article that aims for 140-240 words in 3-5 short paragraphs when the evidence supports it. Begin with what changed, explain the technology or context in plain language, and develop the practical impact: who is affected, what changes, why it matters, and any supported limitation or next step. Never invent an impact or pad a thin source; a shorter complete article is better than unsupported detail.
 Also, suggest 1-3 relevant tags (e.g., "RAG", "reinforcement learning", "OpenAI"), a domain (choose from: LLMs, Robotics, Cybersecurity, Research, Startups, Tools, Drama), and a severity level (normal, notable, major).
 
 Format your response exactly as JSON:

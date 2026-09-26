@@ -283,7 +283,7 @@ function validateDraft(value: unknown, sources: Source[]): Draft {
   const draft = value as Draft;
   if (typeof draft.title !== 'string' || draft.title.length < 10 || draft.title.length > 180) throw new Error('Invalid drafted title.');
   const wordCount = typeof draft.crux === 'string' ? draft.crux.trim().split(/\s+/).length : 0;
-  if (typeof draft.crux !== 'string' || draft.crux.length < 2500 || draft.crux.length > 9000 || wordCount < 450 || wordCount > 1400) throw new Error('Draft does not meet the long-form article standard.');
+  if (typeof draft.crux !== 'string' || !draft.crux.trim() || draft.crux.length > 9000 || wordCount > 1400) throw new Error('Draft does not meet the supported article format.');
   if (!Array.isArray(draft.tags) || draft.tags.length < 2 || draft.tags.length > 8 || draft.tags.some(tag => typeof tag !== 'string' || tag.length > 50)) throw new Error('Invalid tags.');
   if (!['normal', 'notable', 'major'].includes(draft.severity)) throw new Error('Invalid severity.');
   if (!Array.isArray(draft.claims) || !draft.claims.length) throw new Error('Draft has no claim ledger.');
@@ -305,8 +305,8 @@ async function draftCandidate(candidate: Candidate): Promise<{ draft: Draft; sou
   const result = await callGemini(`You are the autonomous editor of AgeOfAI, a weekly technology magazine for engineers, students and curious practitioners. Use only the numbered evidence below. Never add a fact that is not supported. If sources conflict, state the disagreement in uncertainties. Write JSON only.
 
 Domain: ${domain.id}. Focus: ${domain.description}.
-Required JSON: {"title":"accurate headline","crux":"A detailed 600-1000 word article in 5-7 paragraphs separated by blank lines. Explain what changed, the technical mechanism, evidence, trade-offs, practical consequences, and what remains uncertain.","tags":["2-8 specific terms"],"severity":"normal|notable|major","claims":[{"text":"each factual claim","sourceIds":["S1","S2"]}],"uncertainties":["unresolved limitation"]}.
-Every factual statement in the crux must be represented in the claim ledger. Prefer precise, restrained language. Do not pad the article, speculate beyond the evidence, or call a story breaking unless severity is major. If the sources do not support a detailed account, the draft should fail rather than invent detail.
+Required JSON: {"title":"accurate headline","crux":"A source-adaptive article, usually 220-450 words in 4-7 paragraphs. Lead with what changed; explain the technical mechanism or context; examine who is affected, the practical consequences, trade-offs, limitations, and what remains uncertain.","tags":["2-8 specific terms"],"severity":"normal|notable|major","claims":[{"text":"each factual claim","sourceIds":["S1","S2"]}],"uncertainties":["unresolved limitation"]}.
+Every factual statement in the crux must be represented in the claim ledger. Prefer precise, restrained language with enough explanation for a newcomer. Do not pad the article, speculate beyond the evidence, invent an impact, or call a story breaking unless severity is major. If the sources are sparse, write the best complete shorter account they support.
 
 EVIDENCE\n${evidence}`);
   return { draft: validateDraft(result.value, sources), sources, modelUsed: result.modelUsed };

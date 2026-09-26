@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { routeDraft } from '../src/lib/draftRouting';
-import { parseAndValidateDraft } from '../src/lib/draftValidation';
+import { localDraftPrompt, parseAndValidateDraft } from '../src/lib/draftValidation';
 
 test('automatic routing keeps ordinary stories on the local primary model', () => {
   const route = routeDraft({ rawTitle: 'A new JavaScript runtime ships', rawContent: 'The release improves package loading.', suggestedDomain: 'Tools' });
@@ -29,8 +29,9 @@ test('draft validation normalizes classification but preserves an adequate story
   assert.equal(result.draft.severity, 'normal');
 });
 
-test('draft validation rejects one-line undersized output', () => {
-  assert.throws(() => parseAndValidateDraft(JSON.stringify({ crux: 'Too short.', tags: [], domain: 'Tools', severity: 'normal' })), /2 words/);
+test('draft validation accepts a short source-supported brief without a lower word gate', () => {
+  const result = parseAndValidateDraft(JSON.stringify({ crux: 'A concise verified update.', tags: [], domain: 'Tools', severity: 'normal' }));
+  assert.equal(result.wordCount, 4);
 });
 
 test('draft validation accepts an 11-word brief in one paragraph', () => {
@@ -39,7 +40,13 @@ test('draft validation accepts an 11-word brief in one paragraph', () => {
   assert.equal(parseAndValidateDraft(JSON.stringify({ crux, tags: ['brief'], domain: 'Tools', severity: 'normal' })).wordCount, 11);
 });
 
-test('draft validation rejects a story of 10 words or fewer', () => {
-  const crux = Array.from({ length: 10 }, (_, index) => `word${index}`).join(' ');
-  assert.throws(() => parseAndValidateDraft(JSON.stringify({ crux, tags: ['brief'], domain: 'Tools', severity: 'normal' })), /more than 10/);
+test('draft validation rejects only an empty story at the lower boundary', () => {
+  assert.throws(() => parseAndValidateDraft(JSON.stringify({ crux: '   ', tags: ['brief'], domain: 'Tools', severity: 'normal' })), /empty story/);
+});
+
+test('local drafting asks for context and impact without making length an acceptance rule', () => {
+  const prompt = localDraftPrompt('A verified source report.');
+  assert.match(prompt, /who is affected/i);
+  assert.match(prompt, /practical impact/i);
+  assert.match(prompt, /shorter article/i);
 });

@@ -51,6 +51,11 @@ async function draftWithOllama(model: string, source: string, domainHint?: strin
     generationDurationMs += result.eval_duration ? Math.round(result.eval_duration / 1_000_000) : 0;
     try {
       const validated = parseAndValidateDraft(result.message?.content || '', domainHint);
+      if (validated.wordCount < 80 && attempt === 1) {
+        lastError = new Error(`The first draft was only ${validated.wordCount} words and did not use the available evidence fully.`);
+        prompt = `${localDraftPrompt(source)}\n\nYour first draft was too thin to be useful. Rewrite it with fuller context and consequences, aiming for 120-180 words in 2-4 short paragraphs. Explain the mechanism or background in plain language, identify who is affected, and state the practical impact or uncertainty only when the source supports it. Do not pad, speculate, or invent facts. Return one JSON object without reasoning, markdown, or commentary.`;
+        continue;
+      }
       return {
         ...validated,
         metrics: {
@@ -62,7 +67,7 @@ async function draftWithOllama(model: string, source: string, domainHint?: strin
       };
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      prompt = `${localDraftPrompt(source)}\n\nYour previous attempt failed validation: ${lastError.message} Rewrite it as a complete story of about 90 words and return one JSON object. Do not include reasoning, markdown, or commentary.`;
+      prompt = `${localDraftPrompt(source)}\n\nYour previous attempt failed validation: ${lastError.message} Rewrite it as a complete, source-grounded article and return one JSON object. Do not include reasoning, markdown, or commentary.`;
     }
   }
   throw lastError || new Error('The local model did not return a valid draft.');

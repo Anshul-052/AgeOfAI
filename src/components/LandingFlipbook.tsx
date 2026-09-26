@@ -141,12 +141,12 @@ export default function LandingFlipbook() {
           autoSize={false}
           maxShadowOpacity={isPortrait ? 0.82 : 0.65}
           showCover={false}
-          mobileScrollSupport
+          mobileScrollSupport={false}
           clickEventForward
-          useMouseEvents
+          useMouseEvents={!isPortrait}
           swipeDistance={isPortrait ? 12 : 24}
           showPageCorners
-          disableFlipByClick={false}
+          disableFlipByClick={isPortrait}
           onFlip={(event: { data: number }) => setCurrentPage(event.data)}
           className="landing-book"
           style={{ margin: 0 }}
@@ -274,6 +274,11 @@ export default function LandingFlipbook() {
           </section>
         </HTMLFlipBook>
       </div>
+
+      {isPortrait && <div className="mobile-page-turn-zones" aria-label="Page turn controls">
+        <button type="button" onClick={() => turn("previous")} disabled={currentPage === 0} aria-label="Turn to previous page">‹</button>
+        <button type="button" onClick={() => turn("next")} disabled={currentPage >= pageNames.length - 1} aria-label="Turn to next page">›</button>
+      </div>}
 
       <aside className="landing-controls" aria-label="Landing page controls" onClick={stopFlip}>
         <button type="button" onClick={() => turn("previous")} disabled={currentPage === 0} aria-label="Previous page">↑</button>

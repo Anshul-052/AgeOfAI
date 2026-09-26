@@ -19,9 +19,8 @@ export function parseAndValidateDraft(output: string, domainHint?: string | null
   const record = value as Record<string, unknown>;
   const crux = typeof record.crux === 'string' ? record.crux.trim() : '';
   const wordCount = crux ? crux.split(/\s+/).length : 0;
-  if (wordCount <= 10 || wordCount > 650) {
-    throw new Error(`The draft contains ${wordCount} words; a valid story must contain more than 10 and no more than 650.`);
-  }
+  if (!crux) throw new Error('The model returned an empty story.');
+  if (wordCount > 650) throw new Error(`The draft contains ${wordCount} words; the maximum supported length is 650.`);
   const allowedDomains = domains.map(domain => domain.id);
   const domain = typeof record.domain === 'string' && allowedDomains.includes(record.domain)
     ? record.domain
@@ -36,9 +35,15 @@ export function parseAndValidateDraft(output: string, domainHint?: string | null
 
 export function localDraftPrompt(source: string): string {
   const domainList = domains.map(domain => domain.id).join(', ');
-  return `You are an experienced technology journalist writing for AgeOfAI. Write an original, accurate story from only the supplied source material.
+  return `You are an experienced technology journalist writing for AgeOfAI, a Sunday magazine readers should look forward to. Write an original, accurate article from only the supplied source material.
 
-Write a focused story of about 90 words in 1-3 short paragraphs. Start with a strong factual lead, then explain what happened and why it matters in plain language. Use only as much detail as the source supports. Write with a natural magazine voice. Never invent facts, quotes, dates, numbers, reactions, or motives, and never pad a thin source.
+Aim for a substantial 120-180 word story in 2-4 short paragraphs, expanding further when the evidence supports it. Do not merely report what happened. Give the reader:
+1. a strong factual lead that states the development clearly;
+2. enough plain-language context to understand the technology or decision;
+3. the practical impact: who is affected, what changes, what opportunity or risk follows, and why the development matters now;
+4. an important limitation, uncertainty, or next step when the source provides one.
+
+Prefer concrete explanation over adjectives and avoid repeating the headline. Write with the clarity and rhythm of a good magazine journalist: informed, curious, direct, and readable for someone new to the subject. Use only as much detail as the evidence supports. Never invent facts, quotes, dates, numbers, reactions, motives, or impacts, and never pad a thin source. A brief source may produce a shorter article; completeness and accuracy matter more than hitting a number.
 
 Return only valid JSON with keys crux, tags, domain, and severity. tags must contain 1-3 strings. domain must be one of: ${domainList}. severity must be normal, notable, or major.
 

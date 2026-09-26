@@ -27,7 +27,7 @@ export interface DomainTokenStats {
 }
 
 export function computeContentHash(text: string): string {
-  return crypto.createHash('sha256').update(`journalistic-v4\n${text.trim()}`).digest('hex');
+  return crypto.createHash('sha256').update(`journalistic-v5-depth-and-impact\n${text.trim()}`).digest('hex');
 }
 
 export async function draftStoryWithGemini(content: string, domainHint?: string): Promise<{
@@ -95,8 +95,8 @@ export async function draftStoryWithGemini(content: string, domainHint?: string)
 
   const domainList = domains.map(domain => domain.id);
 
-  const prompt = `You are a careful technology journalist writing for AgeOfAI, a weekly magazine for engineers, students, and curious readers.
-Turn the source material into an original story of 220-400 words in 4-6 short paragraphs. This length and paragraph structure are required. Open with a strong, informative lead. Explain what happened, why it matters, how the technology works in plain language, the practical consequences, and any important limitation. When the source is brief, develop the explanation by connecting the facts already present and clearly describing their stated consequences; never add outside facts. Use varied sentences and a confident magazine voice, but keep the writing clear, natural, and easy to follow. Do not use jargon when ordinary words work. Never invent facts, quotes, dates, numbers, reactions, or motives that are absent from the source. Do not mention these instructions.
+  const prompt = `You are a careful technology journalist writing for AgeOfAI, a Sunday magazine for engineers, students, and curious readers.
+Turn the source material into an original, genuinely informative article. Aim for 160-280 words in 3-5 short paragraphs when the evidence supports that depth. Do not merely restate the event. Open with a strong factual lead, explain the mechanism or background in plain language, and then examine the practical impact: who is affected, what changes, why it matters now, and what opportunity, trade-off, risk, limitation, or next step the evidence establishes. If the source does not establish a consequence, say what remains unknown instead of guessing. A thin source may justify a shorter article; completeness and accuracy matter more than hitting a number. Use varied sentences and a confident magazine voice that remains natural and easy for a newcomer to follow. Do not use jargon when ordinary words work. Never invent facts, quotes, dates, numbers, reactions, motives, or impacts that are absent from the source. Do not mention these instructions.
 Also, suggest 1-3 relevant tags (e.g., "RAG", "reinforcement learning", "OpenAI"), a domain (choose from: ${domainList.join(', ')}), and a severity level (normal, notable, major).
 
 Format your response strictly as JSON with key names "crux", "tags", "domain", and "severity":
@@ -152,24 +152,26 @@ ${content}`;
     }
 
     let wordCount = draft.crux?.trim().split(/\s+/).length || 0;
-    if (wordCount < 180) {
-      const expansionPrompt = `Rewrite the JSON draft below so the crux is 220-400 words in 4-6 short paragraphs. Keep its facts and classification, improve the lead and flow, explain the consequences in plain language, and do not introduce any fact absent from the source. Return JSON only with crux, tags, domain, and severity.\n\nSOURCE\n${content}\n\nCURRENT DRAFT\n${JSON.stringify(draft)}`;
+    if (wordCount < 90) {
+      const expansionPrompt = `The draft below is too thin to give a reader useful understanding. Rewrite it as a fuller 160-280 word magazine article in 3-5 short paragraphs when the source supports that depth. Preserve every verified fact and classification. Explain the background or mechanism in plain language, identify who is affected, and describe the practical consequences, limitation, or next step established by the source. Never invent an impact or pad the article. If the evidence is genuinely sparse, return the best complete shorter story it supports. Return JSON only with crux, tags, domain, and severity.\n\nSOURCE\n${content}\n\nCURRENT DRAFT\n${JSON.stringify(draft)}`;
       const retryUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelUsed)}:generateContent?key=${encodeURIComponent(apiKey)}`;
       const retry = await fetch(retryUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: expansionPrompt }] }], generationConfig: { temperature: 0.45, maxOutputTokens: 4096, responseMimeType: 'application/json' } }) });
-      if (!retry.ok) throw new Error(`Gemini expansion returned HTTP ${retry.status}: ${(await retry.text()).slice(0, 300)}`);
-      const retryData = await retry.json();
-      const retryText = retryData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-      try { draft = JSON.parse(retryText.match(/\{[\s\S]*\}/)?.[0] || retryText); }
-      catch { throw new Error('Gemini expansion was not valid JSON.'); }
-      const retryUsage = retryData.usageMetadata || {};
-      promptTokens += retryUsage.promptTokenCount || 0;
-      candidateTokens += retryUsage.candidatesTokenCount || 0;
-      totalTokens += retryUsage.totalTokenCount || ((retryUsage.promptTokenCount || 0) + (retryUsage.candidatesTokenCount || 0));
-      wordCount = draft.crux?.trim().split(/\s+/).length || 0;
+      if (retry.ok) {
+        const retryData = await retry.json();
+        const retryText = retryData.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+        try {
+          const expanded = JSON.parse(retryText.match(/\{[\s\S]*\}/)?.[0] || retryText) as DraftStoryResult;
+          if (expanded.crux?.trim()) draft = expanded;
+        } catch { /* Keep the usable first draft when the optional expansion is malformed. */ }
+        const retryUsage = retryData.usageMetadata || {};
+        promptTokens += retryUsage.promptTokenCount || 0;
+        candidateTokens += retryUsage.candidatesTokenCount || 0;
+        totalTokens += retryUsage.totalTokenCount || ((retryUsage.promptTokenCount || 0) + (retryUsage.candidatesTokenCount || 0));
+        wordCount = draft.crux?.trim().split(/\s+/).length || 0;
+      }
     }
-    if (wordCount < 140 || wordCount > 650) {
-      throw new Error(`Gemini returned ${wordCount} words; the safe range is 140-650. The source may not contain enough verified detail for a longer story.`);
-    }
+    if (!draft.crux?.trim()) throw new Error('Gemini returned an empty story.');
+    if (wordCount > 650) throw new Error(`Gemini returned ${wordCount} words; the maximum supported length is 650.`);
     if (!domainList.includes(draft.domain)) draft.domain = domainHint || 'Research';
     if (!['normal', 'notable', 'major'].includes(draft.severity)) draft.severity = 'normal';
     if (!Array.isArray(draft.tags)) draft.tags = ['Technology'];
