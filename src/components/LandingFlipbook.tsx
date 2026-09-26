@@ -35,6 +35,7 @@ export default function LandingFlipbook() {
   const stageRef = useRef<HTMLElement>(null);
   const bookRef = useRef<FlipBookHandle | null>(null);
   const turnLockRef = useRef(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [dimensions, setDimensions] = useState({ width: 720, height: 900 });
   const [isPortrait, setIsPortrait] = useState(false);
@@ -44,16 +45,16 @@ export default function LandingFlipbook() {
     turnLockRef.current = true;
     if (direction === "next") bookRef.current?.pageFlip().flipNext();
     else bookRef.current?.pageFlip().flipPrev();
-    window.setTimeout(() => { turnLockRef.current = false; }, 780);
-  }, []);
+    window.setTimeout(() => { turnLockRef.current = false; }, isPortrait ? 1120 : 780);
+  }, [isPortrait]);
 
   useEffect(() => {
     const measure = () => {
       const portrait = window.innerWidth < 820;
       setIsPortrait(portrait);
       setDimensions({
-        width: portrait ? window.innerWidth : Math.floor(window.innerWidth / 2),
-        height: window.innerHeight,
+        width: portrait ? Math.max(280, window.innerWidth - 16) : Math.floor(window.innerWidth / 2),
+        height: portrait ? Math.max(480, window.innerHeight - 16) : window.innerHeight,
       });
     };
     measure();
@@ -94,12 +95,29 @@ export default function LandingFlipbook() {
   };
 
   const stopFlip = (event: React.MouseEvent) => event.stopPropagation();
+  const beginTouch = (event: React.TouchEvent<HTMLElement>) => {
+    const touch = event.changedTouches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  };
+  const endTouch = (event: React.TouchEvent<HTMLElement>) => {
+    const start = touchStartRef.current;
+    const touch = event.changedTouches[0];
+    touchStartRef.current = null;
+    if (!start || !touch) return;
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaY) > 48 && Math.abs(deltaY) > Math.abs(deltaX) + 16) {
+      turn(deltaY < 0 ? "next" : "previous");
+    }
+  };
 
   return (
     <main
       ref={stageRef}
       className="landing-stage"
       onPointerMove={moveLight}
+      onTouchStart={beginTouch}
+      onTouchEnd={endTouch}
       style={{ "--landing-page": currentPage } as React.CSSProperties}
     >
       <div className="landing-ambient" aria-hidden="true"><span /><span /><span /></div>
@@ -117,16 +135,16 @@ export default function LandingFlipbook() {
           maxHeight={dimensions.height}
           startPage={Math.min(currentPage, pageNames.length - 1)}
           drawShadow
-          flippingTime={900}
+          flippingTime={isPortrait ? 1080 : 900}
           usePortrait={isPortrait}
           startZIndex={20}
           autoSize={false}
-          maxShadowOpacity={0.65}
+          maxShadowOpacity={isPortrait ? 0.82 : 0.65}
           showCover={false}
           mobileScrollSupport
           clickEventForward
           useMouseEvents
-          swipeDistance={24}
+          swipeDistance={isPortrait ? 12 : 24}
           showPageCorners
           disableFlipByClick={false}
           onFlip={(event: { data: number }) => setCurrentPage(event.data)}
@@ -147,7 +165,7 @@ export default function LandingFlipbook() {
           </section>
 
           <section className="landing-page landing-paper proposition-page">
-            <header className="landing-running-head"><span>01 / The proposition</span><span>Read across technology</span></header>
+            <header className="landing-running-head"><span>01 / The proposition</span><Link className="landing-page-signin" href="/login?next=%2Fread" prefetch={false} onClick={stopFlip}>Sign in</Link></header>
             <div className="landing-page-body">
               <p className="landing-kicker">The internet has updates. You need perspective.</p>
               <h2>Tech moves in every direction.<br /><em>We draw the map.</em></h2>
@@ -175,7 +193,7 @@ export default function LandingFlipbook() {
           </section>
 
           <section className="landing-page landing-ink domain-page">
-            <header className="landing-running-head"><span>03 / The coverage</span><span>Almost every corner of tech</span></header>
+            <header className="landing-running-head"><span>03 / The coverage</span><Link className="landing-page-signin" href="/login?next=%2Fread" prefetch={false} onClick={stopFlip}>Sign in</Link></header>
             <div className="landing-page-body">
               <p className="landing-kicker">The whole map, not the loudest neighbourhood.</p>
               <h2>Across<br />technology.</h2>
@@ -198,16 +216,16 @@ export default function LandingFlipbook() {
               <div className="techluna-copy">
                 <p className="landing-kicker">The small startup behind the big curiosity.</p>
                 <h2>TechLuna</h2>
-                <p>TechLuna started because I was bored enough to ask AI inconvenient questions and curious enough to keep building the answers.</p>
-                <p>Now it is where I experiment with problems we have not noticed yet. No dramatic garage story. Just ideas, prototypes, and an unreasonable amount of fun.</p>
-                <strong>AgeOfAI is one of those ideas that refused to stay small.</strong>
+                <p>TechLuna began the way most respectable companies absolutely do not: I got bored. Then curious. Then slightly obsessed with what AI could solve before anyone had named the problem.</p>
+                <p>So I started making things. No garage mythology, no heroic origin story—just experiments, useful accidents, and an unreasonable amount of fun.</p>
+                <strong>AgeOfAI is one of the experiments that forgot to stay small.</strong>
               </div>
             </div>
             <footer className="landing-folio"><span>Built out of curiosity</span><span>4</span></footer>
           </section>
 
           <section className="landing-page landing-paper desk-page">
-            <header className="landing-running-head"><span>05 / The desk</span><span>Machine speed. Human permission.</span></header>
+            <header className="landing-running-head"><span>05 / The desk</span><Link className="landing-page-signin" href="/login?next=%2Fread" prefetch={false} onClick={stopFlip}>Sign in</Link></header>
             <div className="landing-page-body">
               <p className="landing-kicker">The editor works fast. The editor does not publish.</p>
               <h2>A newsroom<br />with a final human word.</h2>
@@ -232,9 +250,9 @@ export default function LandingFlipbook() {
               <div className="founder-copy-inner">
                 <p className="landing-kicker">Anshul Ramesh Nagpure</p>
                 <h2>Curiosity is<br />the full-time job.</h2>
-                <p>I am a third-year B.Tech student at Vishwakarma Institute of Technology, Pune, and a full-time artist in more directions than a sensible bio should allow: lyricist, poet, music producer, rapper, and writer.</p>
-                <p>I am an AI enthusiast with a slightly unreasonable need to know how everything works. The plan is to turn a small experiment called TechLuna into a full-blown company—one useful, strange idea at a time.</p>
-                <blockquote>“I do not collect interests.<br />I follow them until they become work.”</blockquote>
+                <p>Third-year B.Tech student at Vishwakarma Institute of Technology, Pune—at least that is the tidy version. The less tidy version is lyricist, poet, music producer, rapper, writer, and full-time collector of questions.</p>
+                <p>Curiosity has terrible boundaries. Mine wandered into AI and stayed there. Now I am turning a small experiment called TechLuna into a full-blown company, one useful and slightly strange idea at a time.</p>
+                <blockquote>“I ask too many questions.<br />Occasionally, one becomes a company.”</blockquote>
               </div>
               <footer className="landing-folio"><span>Anshul / TechLuna</span><span>6</span></footer>
             </div>
@@ -242,7 +260,7 @@ export default function LandingFlipbook() {
 
           <section className="landing-page landing-back-cover">
             <div className="back-cover-signal" aria-hidden="true"><i /><i /><i /><i /></div>
-            <header className="landing-running-head"><span>07 / Your turn</span><span>The archive is open</span></header>
+            <header className="landing-running-head"><span>07 / Your turn</span><Link className="landing-page-signin landing-page-signin-light" href="/login?next=%2Fread" prefetch={false} onClick={stopFlip}>Sign in</Link></header>
             <div className="back-cover-copy">
               <p className="landing-kicker">The next useful thing you learn could be one page away.</p>
               <h2>Stop chasing<br />the feed.<br /><em>Start reading.</em></h2>
