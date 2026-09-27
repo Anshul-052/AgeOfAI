@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { friendlyAuthError } from '@/lib/authMessages';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -25,7 +26,7 @@ export default function ForgotPasswordPage() {
       setSent(true);
       setMessage('If an AgeOfAI account uses that email, a secure reset link is on its way. Check your inbox and spam folder.');
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : 'We could not send the reset email. Please try again.');
+      setMessage(friendlyAuthError(cause, 'recovery'));
     } finally {
       setBusy(false);
     }

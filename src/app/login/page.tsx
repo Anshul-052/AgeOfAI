@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { friendlyAuthError } from '@/lib/authMessages';
 
 function requestedDestination() {
   const requested = new URLSearchParams(window.location.search).get('next') || '/';
@@ -26,8 +27,12 @@ export default function LoginPage() {
         const destination = requestedDestination();
         const callback = new URL('/auth/callback', window.location.origin);
         callback.searchParams.set('next', destination);
-        const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: callback.toString() } });
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: callback.toString() } });
         if (error) throw error;
+        if (data.session) {
+          window.location.assign(destination);
+          return;
+        }
         setMessage('Account created. Check your email to confirm your address, then sign in.');
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -37,7 +42,7 @@ export default function LoginPage() {
         // fresh Supabase cookies before the protected-page check runs.
         window.location.assign(requestedDestination());
       }
-    } catch (cause) { setMessage(cause instanceof Error ? cause.message : 'Authentication failed.'); }
+    } catch (cause) { setMessage(friendlyAuthError(cause, mode)); }
     finally { setBusy(false); }
   };
 
