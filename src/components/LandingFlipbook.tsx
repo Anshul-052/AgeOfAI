@@ -323,7 +323,7 @@ export default function LandingFlipbook() {
                 <Link href="/login?next=%2Fread" prefetch={false} className="landing-cta-secondary">Sign in</Link>
               </div>
             </div>
-            <footer className="back-cover-footer"><span>AgeOfAI</span><span>A TechLuna experiment</span></footer>
+            <footer className="back-cover-footer"><span>AgeOfAI</span><span><Link href="/privacy" onClick={stopFlip}>Privacy</Link> · <Link href="/terms" onClick={stopFlip}>Terms</Link></span><span>A TechLuna experiment</span></footer>
           </section>
         </HTMLFlipBook>
       </div>

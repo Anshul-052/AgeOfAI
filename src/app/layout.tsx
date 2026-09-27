@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import SubscribeForm from "@/components/SubscribeForm";
 import SiteChrome from "@/components/SiteChrome";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: { default: "AgeOfAI — The weekly map of technology", template: "%s — AgeOfAI" },
@@ -32,6 +33,10 @@ export default function RootLayout({
               <p className="text-sm text-on-surface-variant max-w-md">
                 The weekly map of technology: source-checked editions, permanent domain archives, and stories you can save for later.
               </p>
+              <nav aria-label="Legal" className="flex gap-4 mt-3 text-sm font-semibold">
+                <Link href="/privacy">Privacy</Link>
+                <Link href="/terms">Terms</Link>
+              </nav>
             </div>
             <div>
               <SubscribeForm />

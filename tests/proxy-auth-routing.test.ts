@@ -16,3 +16,8 @@ test('password recovery pages remain accessible without a reader session', () =>
   assert.equal(isAuthenticationPage('/forgot-password'), true);
   assert.equal(isAuthenticationPage('/reset-password'), true);
 });
+
+test('public legal pages remain accessible without a reader session', () => {
+  assert.equal(isAuthenticationPage('/privacy'), true);
+  assert.equal(isAuthenticationPage('/terms'), true);
+});

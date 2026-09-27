@@ -110,7 +110,8 @@
 .landing-cta-row { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: 1.5rem; }
 .landing-cta-row a { padding: .9rem 1.2rem; border: 1px solid #111; background: #111; color: #fff8e8; font: 700 .76rem 'Archivo Narrow', sans-serif; letter-spacing: .1em; text-transform: uppercase; }
 .landing-cta-row .landing-cta-secondary { background: transparent; color: #111; }
-.back-cover-footer { position: relative; z-index: 2; display: flex; justify-content: space-between; padding-top: .7rem; border-top: 1px solid currentColor; font: 700 .68rem 'Archivo Narrow', sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.back-cover-footer { position: relative; z-index: 2; display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem 1rem; padding-top: .7rem; border-top: 1px solid currentColor; font: 700 .68rem 'Archivo Narrow', sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.back-cover-footer a { text-decoration: underline; text-underline-offset: .18em; }
 .back-cover-signal { position: absolute; right: -12%; top: 50%; width: 70%; aspect-ratio: 1; transform: translateY(-50%); }
 .back-cover-signal i { position: absolute; inset: calc(var(--signal-index, 0) * 10%); border: 1px solid rgba(255,255,255,.26); border-radius: 50%; animation: signal-pulse 3.2s ease-out infinite; }
 .back-cover-signal i:nth-child(2) { --signal-index: 1; animation-delay: .4s; }
