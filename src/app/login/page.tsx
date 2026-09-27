@@ -33,7 +33,7 @@ export default function LoginPage() {
       });
       if (error) throw error;
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : 'Google sign-in could not start. Please try again.');
+      setMessage(friendlyAuthError(cause, 'login'));
       setBusy(false);
     }
   };

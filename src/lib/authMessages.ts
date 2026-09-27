@@ -21,5 +21,8 @@ export function friendlyAuthError(cause: unknown, action: 'login' | 'signup' | '
   if (message.includes('user already registered')) {
     return 'An account already uses this email. Sign in instead, or reset its password.';
   }
+  if (message.includes('provider is not enabled') || message.includes('unsupported provider')) {
+    return 'Google sign-in is being activated. Please use email sign-in for the moment.';
+  }
   return cause.message || fallback;
 }

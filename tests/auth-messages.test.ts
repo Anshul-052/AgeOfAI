@@ -14,3 +14,7 @@ test('invalid credentials direct readers to password recovery', () => {
 test('existing accounts are directed back to sign in or recovery', () => {
   assert.match(friendlyAuthError(new Error('User already registered'), 'signup'), /Sign in/i);
 });
+
+test('an unavailable social provider has a useful temporary message', () => {
+  assert.match(friendlyAuthError(new Error('Unsupported provider: provider is not enabled'), 'login'), /being activated/i);
+});
