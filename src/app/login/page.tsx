@@ -19,6 +19,25 @@ export default function LoginPage() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
+  const continueWithGoogle = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      const destination = requestedDestination();
+      const callback = new URL('/auth/callback', window.location.origin);
+      callback.searchParams.set('next', destination);
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: callback.toString() },
+      });
+      if (error) throw error;
+    } catch (cause) {
+      setMessage(cause instanceof Error ? cause.message : 'Google sign-in could not start. Please try again.');
+      setBusy(false);
+    }
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setMessage('');
     try {
@@ -50,6 +69,11 @@ export default function LoginPage() {
     <p className="font-label-caps uppercase text-xs text-primary font-bold tracking-widest">Reader account</p>
     <h1 className="font-headline-xl text-3xl mt-2">{mode === 'login' ? 'Welcome back' : 'Join AgeOfAI'}</h1>
     <p className="text-sm text-on-surface-variant mt-2 mb-6">Sign in to read every issue, search the archive, and follow technology across domains.</p>
+    <button type="button" onClick={continueWithGoogle} disabled={busy} className="w-full border border-outline-variant bg-background rounded px-4 py-2.5 font-bold disabled:opacity-50 flex items-center justify-center gap-3">
+      <span aria-hidden="true" className="font-sans text-lg leading-none">G</span>
+      Continue with Google
+    </button>
+    <div className="flex items-center gap-3 my-5" aria-hidden="true"><span className="h-px flex-1 bg-outline-variant" /><span className="text-xs uppercase tracking-widest text-on-surface-variant">or use email</span><span className="h-px flex-1 bg-outline-variant" /></div>
     <form onSubmit={submit} className="space-y-4">
       <label className="block text-sm font-bold">Email<input type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} className="mt-1 w-full bg-background border border-outline-variant rounded px-3 py-2.5 font-normal" /></label>
       <label className="block text-sm font-bold">Password<input type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={8} required value={password} onChange={event => setPassword(event.target.value)} className="mt-1 w-full bg-background border border-outline-variant rounded px-3 py-2.5 font-normal" /></label>
