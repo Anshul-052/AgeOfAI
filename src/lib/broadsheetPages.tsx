@@ -1,5 +1,4 @@
 import React from 'react';
-import Image from 'next/image';
 import type { Story } from '@/components/StoryCard';
 import BroadsheetPageScroll from '@/components/BroadsheetPageScroll';
 
@@ -51,8 +50,14 @@ function DenseStory({ story, wide = false }: { story: Story; wide?: boolean }) {
         {story.title}
       </h3>
       {story.imageUrl && !story.videoUrl && (
-        <figure className={`relative mt-3 w-full overflow-hidden border border-primary/70 bg-secondary-container ${wide ? 'aspect-[2/1] max-h-64' : 'aspect-[16/9] max-h-52'}`}>
-          <Image src={story.imageUrl} alt="" fill sizes={wide ? "(min-width: 1024px) 45vw, 90vw" : "(min-width: 1024px) 22vw, 90vw"} className="object-cover" unoptimized />
+        <figure
+          className={`relative mt-3 w-full shrink-0 overflow-hidden border border-primary/70 bg-secondary-container ${wide ? 'h-52 md:h-64' : 'h-36 md:h-48'}`}
+          style={{ aspectRatio: wide ? '2 / 1' : '16 / 9' }}
+        >
+          {/* Native loading works reliably inside react-pageflip's transformed
+              and initially hidden pages; Next Image's viewport observer does not. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={story.imageUrl} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" className="absolute inset-0 h-full w-full object-cover" />
         </figure>
       )}
       <div className={`mt-3 min-w-0 break-words text-left text-sm md:text-[15px] font-serif leading-[1.52] hyphens-auto [overflow-wrap:anywhere] ${wide ? 'md:columns-2 md:gap-8' : ''}`}>
@@ -98,8 +103,9 @@ export function generateBroadsheetPages(
       <div className="grid min-h-full grid-cols-5 gap-4 py-4">
         <section className="col-span-3 flex min-h-[32rem] flex-col border-r border-outline-variant pr-4">
           {coverImageUrl ? (
-            <div className="relative min-h-0 flex-1 overflow-hidden border border-primary halftone">
-              <Image src={coverImageUrl} alt={coverCaption} fill className="object-cover" unoptimized />
+            <div className="relative w-full shrink-0 overflow-hidden border border-primary halftone" style={{ height: '30rem', minHeight: '30rem' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={coverImageUrl} alt={coverCaption} loading="eager" decoding="async" referrerPolicy="no-referrer" className="absolute inset-0 h-full w-full object-cover" />
               <div className="absolute inset-x-0 bottom-0 bg-black/85 p-2 text-center text-xs font-serif text-white">{coverCaption}</div>
             </div>
           ) : lead ? (
