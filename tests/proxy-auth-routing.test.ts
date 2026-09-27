@@ -11,3 +11,8 @@ test('reader login and callback remain authentication pages', () => {
   assert.equal(isAuthenticationPage('/auth/callback'), true);
   assert.equal(isAuthenticationPage('/admin'), false);
 });
+
+test('password recovery pages remain accessible without a reader session', () => {
+  assert.equal(isAuthenticationPage('/forgot-password'), true);
+  assert.equal(isAuthenticationPage('/reset-password'), true);
+});

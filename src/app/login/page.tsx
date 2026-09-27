@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
 
 function requestedDestination() {
@@ -47,6 +48,7 @@ export default function LoginPage() {
     <form onSubmit={submit} className="space-y-4">
       <label className="block text-sm font-bold">Email<input type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} className="mt-1 w-full bg-background border border-outline-variant rounded px-3 py-2.5 font-normal" /></label>
       <label className="block text-sm font-bold">Password<input type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={8} required value={password} onChange={event => setPassword(event.target.value)} className="mt-1 w-full bg-background border border-outline-variant rounded px-3 py-2.5 font-normal" /></label>
+      {mode === 'login' && <div className="text-right"><Link href="/forgot-password" className="text-sm font-semibold underline underline-offset-4">Forgot password?</Link></div>}
       {message && <p role="status" className="text-sm border border-outline-variant p-3 rounded">{message}</p>}
       <button disabled={busy} className="w-full bg-primary text-on-primary rounded px-4 py-2.5 font-bold disabled:opacity-50">{busy ? 'Please wait...' : mode === 'login' ? 'Sign in' : 'Create account'}</button>
     </form>

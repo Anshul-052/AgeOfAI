@@ -9,9 +9,10 @@ function safeDestination(value: string | null) {
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
   const code = url.searchParams.get('code');
+  const destination = safeDestination(url.searchParams.get('next'));
   const config = getSupabasePublicConfig();
   if (code && config) {
-    const response = NextResponse.redirect(new URL(safeDestination(url.searchParams.get('next')), url.origin));
+    const response = NextResponse.redirect(new URL(destination, url.origin));
     const supabase = createServerClient(config.url, config.key, {
       cookies: {
         getAll: () => request.cookies.getAll(),
@@ -23,6 +24,9 @@ export async function GET(request: NextRequest) {
     });
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return response;
+  }
+  if (destination === '/reset-password') {
+    return NextResponse.redirect(new URL('/forgot-password?error=recovery', url.origin));
   }
   return NextResponse.redirect(new URL('/login?error=confirmation', url.origin));
 }

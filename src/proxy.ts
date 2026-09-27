@@ -18,7 +18,7 @@ function isProtectedRequest(request: NextRequest) {
 }
 
 export function isAuthenticationPage(path: string) {
-  return path === '/login' || path === '/admin/login' || path.startsWith('/auth/');
+  return path === '/login' || path === '/forgot-password' || path === '/reset-password' || path === '/admin/login' || path.startsWith('/auth/');
 }
 
 function copySupabaseState(source: NextResponse, target: NextResponse) {
