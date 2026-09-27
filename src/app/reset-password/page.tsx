@@ -63,7 +63,7 @@ export default function ResetPasswordPage() {
         {message && <p role="status" className="text-sm border border-outline-variant p-3 rounded">{message}</p>}
         {state === 'ready' && <button disabled={busy} className="w-full bg-primary text-on-primary rounded px-4 py-2.5 font-bold disabled:opacity-50">{busy ? 'Updating...' : 'Update password'}</button>}
       </form>
-      {state === 'complete' && <Link href="/login" className="inline-block mt-5 text-sm font-semibold underline underline-offset-4">Sign in</Link>}
+      {state === 'complete' && <Link href="/login?next=/read" className="inline-block mt-5 text-sm font-semibold underline underline-offset-4">Sign in and start reading</Link>}
     </>}
   </section></main>;
 }

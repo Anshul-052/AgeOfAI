@@ -6,10 +6,10 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
 import { friendlyAuthError } from '@/lib/authMessages';
 
 function requestedDestination() {
-  const requested = new URLSearchParams(window.location.search).get('next') || '/';
+  const requested = new URLSearchParams(window.location.search).get('next') || '/read';
   return requested.startsWith('/') && !requested.startsWith('//') && !requested.startsWith('/login') && !requested.startsWith('/auth/')
     ? requested
-    : '/';
+    : '/read';
 }
 
 export default function LoginPage() {

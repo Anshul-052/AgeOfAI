@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabasePublicConfig } from '@/lib/supabase/config';
 
 function safeDestination(value: string | null) {
-  return value?.startsWith('/') && !value.startsWith('//') && !value.startsWith('/login') && !value.startsWith('/auth/') ? value : '/';
+  return value?.startsWith('/') && !value.startsWith('//') && !value.startsWith('/login') && !value.startsWith('/auth/') ? value : '/read';
 }
 
 export async function GET(request: NextRequest) {
